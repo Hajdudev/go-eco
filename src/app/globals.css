@@ -6,3 +6,8 @@
     --color-mist: #F5F7F8;
     --color-slateblack: #45474B;
 }
+*:before,
+*:after,
+*{
+    box-sizing: border-box;
+}
