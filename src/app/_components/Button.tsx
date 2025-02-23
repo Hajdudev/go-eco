@@ -3,8 +3,8 @@ import { cva, VariantProps } from 'class-variance-authority';
 const ButtonStyles = cva('rounded-full outline-0 font-bold text-center', {
   variants: {
     color: {
-      primary: 'bg-primary text-black',
-      secondary: 'bg-secondary text-white',
+      primary: 'bg-primary text-primary-text',
+      secondary: 'bg-secondary text-secondary-text',
     },
     size: {
       sm: 'py-2 px-3',

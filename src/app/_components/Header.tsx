@@ -19,19 +19,19 @@ function Header() {
     <div>
       <div className='align-center mx-4 mt-2 flex justify-between md:mx-8'>
         <div className='align-center flex grow-1 items-center'>
-          <span className='text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
+          <span className='text-background-text text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
             GoEco 🌿
           </span>
           <div className='lg:24 hidden font-bold md:mr-10 md:flex md:max-w-64 md:grow-1 md:justify-between lg:max-w-80 lg:text-2xl'>
-            <span className='group relative'>
+            <span className='text-background-text group relative'>
               Prices
               <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
             </span>
-            <span className='group relative'>
+            <span className='text-background-text group relative'>
               About
               <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
             </span>
-            <span className='group relative'>
+            <span className='text-background-text group relative'>
               Contact
               <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
             </span>

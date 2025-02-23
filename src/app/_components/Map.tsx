@@ -1,16 +1,19 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export function Map() {
+  const position: LatLngExpression = [53.349805, -6.26031];
+
   return (
     <MapContainer
-      center={[53.349805, -6.26031]}
+      center={position}
       zoom={13}
-      style={{ height: '90%', width: '90%' }}
+      style={{ height: '80%', width: '50%' }}
     >
       <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
-      <Marker position={[53.349805, -6.26031]}>
+      <Marker position={position}>
         <Popup>1 Grafton Street, Dublin, Ireland</Popup>
       </Marker>
     </MapContainer>

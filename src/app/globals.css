@@ -2,9 +2,18 @@
 
 @theme {
   --color-primary: #f4ce14;
+  --color-primary-text: #000000;
   --color-secondary: #495e57;
+  --color-secondary-text: #ffffff;
   --color-mist: #f5f7f8;
   --color-slateblack: #45474b;
+  /* --color-primary: #00adb5;
+  --color-primary-text: #ffffff;
+  --color-secondary: #393e46;
+  --color-secondary-text: #ffffff;
+  --color-mist: #222831;
+  --color-slateblack: #eeeeee; */
+  --color-background-text: #0000000;
 }
 *:before,
 *:after,
