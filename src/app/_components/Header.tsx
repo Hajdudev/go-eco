@@ -17,12 +17,12 @@ function Header() {
 
   return (
     <div>
-      <div className='align-center mx-2 mt-2 flex justify-between'>
+      <div className='align-center mx-4 mt-2 flex justify-between md:mx-8'>
         <div className='align-center flex grow-1 items-center'>
-          <span className='px-4 text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
+          <span className='text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
             GoEco 🌿
           </span>
-          <div className='lg:24 hidden font-bold md:mr-18 md:flex md:max-w-64 md:grow-1 md:justify-between lg:text-2xl'>
+          <div className='lg:24 hidden font-bold md:mr-10 md:flex md:max-w-64 md:grow-1 md:justify-between lg:max-w-80 lg:text-2xl'>
             <span className='group relative'>
               Prices
               <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
@@ -65,11 +65,11 @@ function Header() {
               className='ml-20 inline-block h-16 cursor-pointer'
             />
           </div>
-          <span className='bg-primary my-12 inline-block rounded-full px-8 py-3'>
+          <span className='bg-primary my-12 inline-block rounded-2xl px-8 py-3'>
             <span className='text-xl font-bold'>Find Route</span>
             <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
           </span>
-          <span className='bg-secondary inline-block rounded-full px-8 py-4 text-xl font-bold text-white'>
+          <span className='bg-secondary inline-block rounded-2xl px-8 py-4 text-xl font-bold text-white'>
             Signup/Register
           </span>
           <div className='mt-24 flex flex-col items-center justify-between gap-6 text-3xl font-bold text-white'>

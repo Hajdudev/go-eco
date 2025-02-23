@@ -9,7 +9,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className='bg-mist'>
+      <body className='bg-mist overflow-x-hidden'>
         <Header />
         {children}
       </body>

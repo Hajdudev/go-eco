@@ -1,6 +1,6 @@
 import { cva, VariantProps } from 'class-variance-authority';
 
-const inputStyles = cva('rounded-full outline-0 font-bold text-center', {
+const inputStyles = cva('rounded-2xl outline-0 font-bold text-center', {
   variants: {
     color: {
       primary: 'bg-primary text-black',

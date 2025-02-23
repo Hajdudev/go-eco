@@ -1,13 +1,13 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-    --color-primary: #F4CE14;
-    --color-secondary: #495E57;
-    --color-mist: #F5F7F8;
-    --color-slateblack: #45474B;
+  --color-primary: #f4ce14;
+  --color-secondary: #495e57;
+  --color-mist: #f5f7f8;
+  --color-slateblack: #45474b;
 }
 *:before,
 *:after,
-*{
-    box-sizing: border-box;
+* {
+  box-sizing: border-box;
 }
