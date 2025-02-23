@@ -8,7 +8,7 @@ import { Suspense } from 'react';
 export default function Home() {
   const falseData = new Array(7).fill('Nove zamky es Idk ');
   return (
-    <div className='flex h-screen w-screen gap-26 px-8 py-8 md:py-20'>
+    <div className='flex h-full w-screen gap-26 p-8 md:py-20'>
       <main className='w-full lg:w-[40%]'>
         <form>
           <div className='flex flex-col items-center justify-center gap-8'>

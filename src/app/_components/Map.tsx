@@ -10,7 +10,7 @@ export function Map() {
     <MapContainer
       center={position}
       zoom={13}
-      style={{ height: '90%', width: '90%' }}
+      style={{ height: '100%', width: '100%' }}
     >
       <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
       <Marker position={position}>
