@@ -1,6 +1,6 @@
 import { MapPinIcon } from '@heroicons/react/24/solid';
 
-export default function Home() {
+export default function Page() {
   const falseData = new Array(7).fill('Nove zamky es Idk ');
 
   return (
