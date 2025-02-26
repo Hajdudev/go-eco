@@ -98,7 +98,7 @@ export function Map() {
             position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}
           >
             <div>
-              <h2>Selected Place</h2>
+              <h2>{selectedPlace.name}</h2>
               <p>Lat: {selectedPlace.lat}</p>
               <p>Lng: {selectedPlace.lng}</p>
             </div>

@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cva, VariantProps } from 'class-variance-authority';
 
 const inputStyles = cva('rounded-2xl outline-0 font-bold text-center', {
@@ -19,26 +20,47 @@ const inputStyles = cva('rounded-2xl outline-0 font-bold text-center', {
 });
 
 type InputProps = {
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur?: () => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  value: string;
   placeholder: string;
   name: string;
   className?: string;
 } & VariantProps<typeof inputStyles>;
 
-export function Input({
-  placeholder,
-  name,
-  color,
-  size,
-  className,
-}: InputProps) {
-  return (
-    <input
-      className={inputStyles({ color, size, className })}
-      type='text'
-      placeholder={placeholder}
-      name={name}
-    />
-  );
-}
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      onFocus,
+      onBlur,
+      onChange,
+      value,
+      placeholder,
+      name,
+      color,
+      size,
+      className,
+    },
+    ref,
+  ) => {
+    return (
+      <input
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        className={inputStyles({ color, size, className })}
+        type='text'
+        placeholder={placeholder}
+        name={name}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        autoComplete='off'
+      />
+    );
+  },
+);
+
+Input.displayName = 'Input';
 
 export default Input;

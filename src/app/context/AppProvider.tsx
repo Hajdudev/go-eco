@@ -4,27 +4,50 @@ import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 type LatLngLiteral = {
   lat: number;
   lng: number;
+  name?: string;
+};
+
+type MarkerType = {
+  lat: number;
+  lng: number;
+  name: string;
 };
 
 type AppContextType = {
-  markers: google.maps.LatLngLiteral[];
-  selectedPlace: google.maps.LatLngLiteral | null;
-  setMarkers: (value: google.maps.LatLngLiteral[]) => void;
-  setSelectedPlace: (value: google.maps.LatLngLiteral | null) => void;
+  markers: MarkerType[];
+  selectedPlace: MarkerType | null;
+  setMarkers: (value: MarkerType[]) => void;
+  setSelectedPlace: (value: MarkerType | null) => void;
   isMenuOpen: boolean;
   setIsMenuOpen: (value: boolean) => void;
   shapes: LatLngLiteral[][];
   setShapes: (value: LatLngLiteral[][]) => void;
+  showSuggestions: boolean;
+  setShowSuggestions: (value: boolean) => void;
+  activeSuggestionPosition: { top: number; left: number } | null;
+  setActiveSuggestionPosition: (
+    value: { top: number; left: number } | null,
+  ) => void;
+  fromValue: string;
+  toValue: string;
+  setFromValue: (value: string) => void;
+  setToValue: (value: string) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [markers, setMarkers] = useState<google.maps.LatLngLiteral[]>([]);
-  const [selectedPlace, setSelectedPlace] =
-    useState<google.maps.LatLngLiteral | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [markers, setMarkers] = useState<MarkerType[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<MarkerType | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [shapes, setShapes] = useState<LatLngLiteral[][]>([]);
+  const [activeSuggestionPosition, setActiveSuggestionPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [fromValue, setFromValue] = useState('');
+  const [toValue, setToValue] = useState('');
 
   const value = useMemo(
     () => ({
@@ -36,8 +59,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setIsMenuOpen,
       shapes,
       setShapes,
+      showSuggestions,
+      setShowSuggestions,
+      activeSuggestionPosition,
+      setActiveSuggestionPosition,
+      fromValue,
+      toValue,
+      setFromValue,
+      setToValue,
     }),
-    [markers, selectedPlace, isMenuOpen, shapes],
+    [
+      markers,
+      selectedPlace,
+      isMenuOpen,
+      shapes,
+      showSuggestions,
+      activeSuggestionPosition,
+      fromValue,
+      toValue,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
