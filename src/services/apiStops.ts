@@ -21,3 +21,37 @@ export async function getStops() {
 
   return uniqueStops;
 }
+
+type ShapePoint = {
+  lat: number;
+  lng: number;
+};
+
+export async function getShapes(): Promise<ShapePoint[][]> {
+  const { data, error } = await supabase.from('shapes').select('*');
+
+  if (error) {
+    console.error('Error fetching shapes:', error);
+    return [];
+  }
+
+  // Group shapes by shape_id
+  const groupedShapes: { [key: string]: ShapePoint[] } = data.reduce(
+    (acc, shape) => {
+      const shapeId = shape.shape_id;
+      if (!acc[shapeId]) {
+        acc[shapeId] = [];
+      }
+      acc[shapeId].push({
+        lat: parseFloat(shape.shape_pt_lat),
+        lng: parseFloat(shape.shape_pt_lon),
+      });
+      return acc;
+    },
+    {},
+  );
+
+  // Convert to array of shape paths
+  const shapePaths = Object.values(groupedShapes);
+  return shapePaths;
+}

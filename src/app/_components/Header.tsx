@@ -1,20 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
 import {
   MagnifyingGlassIcon,
   ArrowRightIcon,
   Bars3Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { useAppContext } from '../context/AppProvider';
 
 function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isMenuOpen, setIsMenuOpen } = useAppContext();
 
   const toggleMenu = () => {
-    setIsMenuOpen((prev) => !prev);
+    setIsMenuOpen(!isMenuOpen);
   };
-
   return (
     <div>
       <div className='align-center mx-4 mt-2 flex justify-between md:mx-8'>
