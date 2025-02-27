@@ -14,3 +14,14 @@ export default function Page() {
     </div>
   );
 }
+
+// const uniqueStops = Array.from(
+//   new Set(data.map((stop) => stop.stop_name)),
+// ).map((stop_name) => {
+//   const stop = data.find((s) => s.stop_name === stop_name);
+//   return {
+//     name: stop.stop_name,
+//     lat: parseFloat(stop.stop_lat),
+//     lng: parseFloat(stop.stop_lon),
+//   };
+// });
