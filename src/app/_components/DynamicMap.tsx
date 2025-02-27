@@ -8,7 +8,7 @@ import {
   InfoWindow,
   Polyline,
 } from '@react-google-maps/api';
-import { getShapes, getStops } from '@/services/apiStops';
+import { getShapes, getUnfilteredStops } from '@/services/apiStops';
 import LoadingSpinner from '../loading';
 import { useAppContext } from '../context/AppProvider';
 
@@ -32,7 +32,7 @@ export function Map() {
   useEffect(() => {
     async function fetchStops() {
       try {
-        const stops = await getStops();
+        const stops = await getUnfilteredStops();
         setMarkers(stops);
       } catch (error) {
         console.error('Error fetching stops:', error);

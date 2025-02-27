@@ -11,6 +11,10 @@ type MarkerType = {
   name: string;
 };
 
+const removeDiacritics = (str: string) => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+};
+
 const SearchForm = () => {
   const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
   const {
@@ -83,20 +87,53 @@ const SearchForm = () => {
               left: `${activeSuggestionPosition.left}px`,
             }}
           >
-            {/* Example of more suggestions to demonstrate scroll */}
-            {markers.map((marker, index) => (
-              <p
-                key={index + 100}
-                className='hover:bg-primary/20 cursor-pointer rounded-lg px-2 py-2 text-center text-white'
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleClick(marker);
-                }}
-                onMouseDown={(e) => e.preventDefault()} // Prevent blur event
-              >
-                {marker.name}
-              </p>
-            ))}
+            {Array.from(
+              new Set(
+                markers
+                  .filter((marker) => {
+                    const normalizedMarkerName = removeDiacritics(
+                      marker.name.toLowerCase(),
+                    );
+                    if (activeInput === 'from') {
+                      const normalizedFromValue = removeDiacritics(
+                        fromValue.toLowerCase(),
+                      );
+                      return (
+                        fromValue.length < 3 ||
+                        normalizedMarkerName.includes(normalizedFromValue)
+                      );
+                    }
+                    if (activeInput === 'to') {
+                      const normalizedToValue = removeDiacritics(
+                        toValue.toLowerCase(),
+                      );
+                      return (
+                        toValue.length < 3 ||
+                        normalizedMarkerName.includes(normalizedToValue)
+                      );
+                    }
+                    return false;
+                  })
+                  .map((marker) => marker.name),
+              ),
+            ) // Get unique names
+              .map((name) => {
+                // Find first marker matching this name
+                const marker = markers.find((m) => m.name === name);
+                return (
+                  <p
+                    key={name}
+                    className='hover:bg-primary/20 cursor-pointer rounded-lg px-2 py-2 text-center text-white'
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleClick(marker!);
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {name}
+                  </p>
+                );
+              })}
           </div>
         )}
       </div>
