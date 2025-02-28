@@ -1,8 +1,21 @@
 'use server';
 import supabase from './supabaseClient';
 
-export async function getUnfilteredStops() {
-  const { data, error } = await supabase.from('stops').select('*');
+import {
+  Stop,
+  StopTime,
+  Trip,
+  ShapePoint,
+  TransferOption,
+  RouteSegment,
+  RoutingResult,
+} from '../types/gtfs';
+
+export async function getUnfilteredStops(): Promise<Stop[]> {
+  const { data, error } = await supabase
+    .from('stops')
+    // .select('stop_id, stop_name as name, stop_lat as lat , stop_lon as lng ');
+    .select('*');
   if (error) {
     console.error('Error fetching stops:', error);
     return [];
@@ -10,6 +23,7 @@ export async function getUnfilteredStops() {
 
   // Map all stops without filtering duplicates
   const stops = data.map((stop) => ({
+    stop_id: stop.stop_id,
     name: stop.stop_name,
     lat: parseFloat(stop.stop_lat),
     lng: parseFloat(stop.stop_lon),
@@ -18,13 +32,27 @@ export async function getUnfilteredStops() {
   return stops;
 }
 
-type ShapePoint = {
-  lat: number;
-  lng: number;
-};
+export async function getStopTimes(): Promise<StopTime[]> {
+  const { data, error } = await supabase
+    .from('stop_times')
+    .select('trip_id, stop_id, arrival_time, departure_time, stop_sequence');
+  if (error) {
+    console.error('Error fetching stop times:', error);
+    return [];
+  }
+  return data;
+}
+export async function getTrip(): Promise<Trip[]> {
+  const { data, error } = await supabase.from('trips').select('*');
+  if (error) {
+    console.error('Error fetching trips:', error);
+    return [];
+  }
+  return data;
+}
 
 export async function getShapes(): Promise<ShapePoint[][]> {
-  const { data, error } = await supabase.from('shapes').select('*');
+  const { data, error } = await supabase.from('shapes').select('* ');
 
   if (error) {
     console.error('Error fetching shapes:', error);

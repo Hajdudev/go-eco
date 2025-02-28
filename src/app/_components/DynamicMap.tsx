@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import {
   useLoadScript,
   GoogleMap,
@@ -8,7 +8,7 @@ import {
   InfoWindow,
   Polyline,
 } from '@react-google-maps/api';
-import { getShapes, getUnfilteredStops } from '@/services/apiStops';
+
 import LoadingSpinner from '../loading';
 import { useAppContext } from '../context/AppProvider';
 
@@ -17,46 +17,12 @@ const libraries: ('places' | 'drawing' | 'geometry' | 'visualization')[] = [
 ];
 
 export function Map() {
-  const {
-    shapes,
-    setShapes,
-    markers,
-    setMarkers,
-    selectedPlace,
-    setSelectedPlace,
-  } = useAppContext();
+  const { shapes, markers, selectedPlace, setSelectedPlace } = useAppContext();
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
     libraries,
   });
-  useEffect(() => {
-    async function fetchStops() {
-      try {
-        const stops = await getUnfilteredStops();
-        setMarkers(stops);
-      } catch (error) {
-        console.error('Error fetching stops:', error);
-      }
-    }
-    async function fetchShapes() {
-      try {
-        const shapesData = await getShapes();
-        // Ensure the shapes data matches the expected type
-        const typedShapes: google.maps.LatLngLiteral[][] = shapesData.map(
-          (shape) =>
-            shape.map((point) => ({
-              lat: point.lat,
-              lng: point.lng,
-            })),
-        );
-        setShapes(typedShapes);
-      } catch (error) {
-        console.error('Error fetching shapes:', error);
-      }
-    }
-    fetchStops();
-    fetchShapes();
-  }, [setMarkers, setShapes]);
+
   if (loadError) return <div>Error loading maps</div>;
   if (!isLoaded) return <div>Loading Maps</div>;
   return (

@@ -1,4 +1,5 @@
 'use client';
+import { StopTime, Trip } from '@/types/gtfs';
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 type LatLngLiteral = {
@@ -32,6 +33,10 @@ type AppContextType = {
   toValue: string;
   setFromValue: (value: string) => void;
   setToValue: (value: string) => void;
+  stopTimes: StopTime[];
+  setStopTimes: (value: StopTime[]) => void;
+  trips: Trip[];
+  setTrips: (value: Trip[]) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,6 +53,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   } | null>(null);
   const [fromValue, setFromValue] = useState('');
   const [toValue, setToValue] = useState('');
+  const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
 
   const value = useMemo(
     () => ({
@@ -67,6 +74,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       toValue,
       setFromValue,
       setToValue,
+      stopTimes,
+      setStopTimes,
+      trips,
+      setTrips,
     }),
     [
       markers,
@@ -77,6 +88,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       activeSuggestionPosition,
       fromValue,
       toValue,
+      stopTimes,
+      trips,
     ],
   );
 
