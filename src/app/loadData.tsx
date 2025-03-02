@@ -1,12 +1,11 @@
 'use client';
 import { useEffect } from 'react';
 import { useAppContext } from './context/AppProvider';
-import { Stop, ShapePoint, StopTime, Trip } from '@/types/gtfs';
+import { Stop, ShapePoint, Trip } from '@/types/gtfs';
 
 interface ContextInitializerProps {
   initialStops: Stop[];
   initialShapes: ShapePoint[][];
-  initialStopTimes: StopTime[];
   initialTrips: Trip[];
 }
 
@@ -14,9 +13,8 @@ export function ContextInitializer({
   initialStops,
   initialShapes,
   initialTrips,
-  initialStopTimes,
 }: ContextInitializerProps) {
-  const { setMarkers, setShapes } = useAppContext();
+  const { setMarkers, setShapes, setTrips } = useAppContext();
 
   // Update context with server fetched data
   useEffect(() => {
@@ -27,8 +25,7 @@ export function ContextInitializer({
       setShapes(initialShapes);
     }
     if (initialTrips && initialTrips.length > 0) {
-    }
-    if (initialStopTimes && initialStopTimes.length > 0) {
+      setTrips(initialTrips);
     }
   }, [
     initialStops,
@@ -36,7 +33,7 @@ export function ContextInitializer({
     setMarkers,
     setShapes,
     initialTrips,
-    initialStopTimes,
+    setTrips,
   ]);
 
   return <></>;

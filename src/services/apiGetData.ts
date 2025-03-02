@@ -1,15 +1,7 @@
 'use server';
 import supabase from './supabaseClient';
 
-import {
-  Stop,
-  StopTime,
-  Trip,
-  ShapePoint,
-  TransferOption,
-  RouteSegment,
-  RoutingResult,
-} from '../types/gtfs';
+import { Stop, StopTime, Trip, ShapePoint } from '../types/gtfs';
 
 export async function getUnfilteredStops(): Promise<Stop[]> {
   const { data, error } = await supabase
@@ -32,16 +24,23 @@ export async function getUnfilteredStops(): Promise<Stop[]> {
   return stops;
 }
 
-export async function getStopTimes(): Promise<StopTime[]> {
+export async function getStopTimes(
+  stop_id: string,
+  limit: number = 500,
+): Promise<StopTime[]> {
   const { data, error } = await supabase
     .from('stop_times')
-    .select('trip_id, stop_id, arrival_time, departure_time, stop_sequence');
+    .select('trip_id, stop_id, arrival_time, departure_time, stop_sequence')
+    .eq('stop_id', stop_id)
+    .limit(limit); // Limit the number of results
+
   if (error) {
     console.error('Error fetching stop times:', error);
     return [];
   }
   return data;
 }
+
 export async function getTrip(): Promise<Trip[]> {
   const { data, error } = await supabase.from('trips').select('*');
   if (error) {

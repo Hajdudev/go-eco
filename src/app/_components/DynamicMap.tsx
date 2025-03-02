@@ -1,13 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import {
-  useLoadScript,
-  GoogleMap,
-  Marker,
-  InfoWindow,
-  Polyline,
-} from '@react-google-maps/api';
+import { useLoadScript, GoogleMap, InfoWindow } from '@react-google-maps/api';
 
 import LoadingSpinner from '../loading';
 import { useAppContext } from '../context/AppProvider';
@@ -17,7 +11,7 @@ const libraries: ('places' | 'drawing' | 'geometry' | 'visualization')[] = [
 ];
 
 export function Map() {
-  const { shapes, markers, selectedPlace, setSelectedPlace } = useAppContext();
+  const { selectedPlace } = useAppContext();
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
     libraries,
@@ -32,33 +26,6 @@ export function Map() {
         center={{ lat: 48.148598, lng: 17.107748 }} // Update to your desired center
         zoom={16}
       >
-        <>
-          {shapes.map((shape, index) => (
-            <Polyline
-              key={index}
-              path={shape}
-              options={{
-                strokeColor: '#FF0000',
-                strokeOpacity: 1,
-                strokeWeight: 2,
-              }}
-            />
-          ))}
-          {markers.map((marker, index) => (
-            <Marker
-              key={index}
-              onClick={() => {
-                if (marker === selectedPlace) {
-                  setSelectedPlace(null);
-                } else {
-                  setSelectedPlace(marker);
-                }
-              }}
-              position={{ lat: marker.lat, lng: marker.lng }}
-            />
-          ))}
-        </>
-
         {selectedPlace && (
           <InfoWindow
             position={{ lat: selectedPlace.lat, lng: selectedPlace.lng }}

@@ -61,7 +61,7 @@ function Header() {
             <span>GoEco 🌿</span>
             <XMarkIcon
               onClick={toggleMenu}
-              className='ml-20 inline-block h-16 cursor-pointer'
+              className='ml-10 inline-block h-16 cursor-pointer'
             />
           </div>
           <span className='bg-primary my-12 inline-block rounded-2xl px-8 py-3'>

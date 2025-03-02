@@ -4,12 +4,7 @@ import './globals.css';
 import DynamicMap from './_components/DynamicMap';
 import { Provider } from './context/Provider';
 import SearchForm from './_components/SearchForm';
-import {
-  getShapes,
-  getStopTimes,
-  getTrip,
-  getUnfilteredStops,
-} from '@/services/apiGetData';
+import { getShapes, getTrip, getUnfilteredStops } from '@/services/apiGetData';
 import ContextInitializer from './loadData';
 
 export default async function RootLayout({
@@ -20,7 +15,6 @@ export default async function RootLayout({
   const stops = await getUnfilteredStops();
   const shapesData = await getShapes();
   const trips = await getTrip();
-  const stopTimes = await getStopTimes();
 
   const typedShapes = shapesData.map((shape) =>
     shape.map((point) => ({
@@ -44,7 +38,6 @@ export default async function RootLayout({
                 initialStops={stops}
                 initialShapes={typedShapes}
                 initialTrips={trips}
-                initialStopTimes={stopTimes}
               />
               <DynamicMap />
             </div>

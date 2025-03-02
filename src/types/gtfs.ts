@@ -1,35 +1,32 @@
-export type Stop = {
+export interface Stop {
   stop_id: string;
   name: string;
   lat: number;
   lng: number;
-};
+}
 
-export type StopTime = {
+export interface StopTime {
   trip_id: string;
   stop_id: string;
-  arrival_time: number;
-  departure_time: number;
+  arrival_time: string;
+  departure_time: string;
   stop_sequence: number;
-};
+}
 
-export type ShapePoint = {
+export interface ShapePoint {
   lat: number;
   lng: number;
-};
+}
 
-export type Trip = {
+export interface Trip {
   trip_id: string;
   route_id: string;
   service_id: string;
   trip_headsign?: string;
   trip_short_name?: string;
-  direction_id?: 0 | 1;
-  block_id?: string;
+  direction_id?: number;
   shape_id?: string;
-  wheelchair_accessible?: 0 | 1 | 2;
-  bikes_allowed?: 0 | 1 | 2;
-};
+}
 
 export type TransferOption = {
   from_stop_id: string;
