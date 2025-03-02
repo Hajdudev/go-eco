@@ -1,4 +1,5 @@
 'use client';
+import { Stop, StopTime, Trip } from '@/types/gtfs';
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 type LatLngLiteral = {
@@ -7,17 +8,11 @@ type LatLngLiteral = {
   name?: string;
 };
 
-type MarkerType = {
-  lat: number;
-  lng: number;
-  name: string;
-};
-
 type AppContextType = {
-  markers: MarkerType[];
-  selectedPlace: MarkerType | null;
-  setMarkers: (value: MarkerType[]) => void;
-  setSelectedPlace: (value: MarkerType | null) => void;
+  markers: Stop[];
+  selectedPlace: Stop | null;
+  setMarkers: (value: Stop[]) => void;
+  setSelectedPlace: (value: Stop | null) => void;
   isMenuOpen: boolean;
   setIsMenuOpen: (value: boolean) => void;
   shapes: LatLngLiteral[][];
@@ -32,14 +27,18 @@ type AppContextType = {
   toValue: string;
   setFromValue: (value: string) => void;
   setToValue: (value: string) => void;
+  stopTimes: StopTime[];
+  setStopTimes: (value: StopTime[]) => void;
+  trips: Trip[];
+  setTrips: (value: Trip[]) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [markers, setMarkers] = useState<MarkerType[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<MarkerType | null>(null);
+  const [markers, setMarkers] = useState<Stop[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<Stop | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [shapes, setShapes] = useState<LatLngLiteral[][]>([]);
   const [activeSuggestionPosition, setActiveSuggestionPosition] = useState<{
@@ -48,6 +47,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   } | null>(null);
   const [fromValue, setFromValue] = useState('');
   const [toValue, setToValue] = useState('');
+  const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
 
   const value = useMemo(
     () => ({
@@ -67,6 +68,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       toValue,
       setFromValue,
       setToValue,
+      stopTimes,
+      setStopTimes,
+      trips,
+      setTrips,
     }),
     [
       markers,
@@ -77,6 +82,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       activeSuggestionPosition,
       fromValue,
       toValue,
+      stopTimes,
+      trips,
     ],
   );
 

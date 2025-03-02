@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Input } from './Input';
 import { Button } from './Button';
 import { useAppContext } from '../context/AppProvider';
+import Link from 'next/link';
 
 type MarkerType = {
   lat: number;
@@ -61,7 +62,7 @@ const SearchForm = () => {
 
   return (
     <form>
-      <div className='flex flex-col items-center justify-center gap-8'>
+      <div className='flex flex-col items-center justify-center gap-5'>
         <Input
           value={fromValue}
           onChange={(e) => setFromValue(e.target.value)}
@@ -78,7 +79,9 @@ const SearchForm = () => {
           onFocus={handleFocus('to')}
           onBlur={handleBlur}
         />
-        <Button text='Search a route' color='primary' value='search' />
+        <Link href={`/route?from=${fromValue}&to=${toValue}`}>
+          <Button text='Search a route' color='primary' value='search' />
+        </Link>
         {showSuggestions && activeSuggestionPosition && (
           <div
             className='bg-secondary scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary absolute z-50 max-h-40 w-67 overflow-y-auto rounded-xl p-4 font-bold shadow-lg'
