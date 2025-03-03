@@ -161,7 +161,7 @@ export default function Page() {
           setRoutes(results);
           setLoading(false);
         }, 10); // Small delay to let UI update
-      } catch (err) {
+      } catch {
         if (isMounted) {
           setError('Failed to find routes. Please try again later.');
           setLoading(false);
