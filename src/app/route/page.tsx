@@ -194,12 +194,6 @@ export default function Page() {
   }): RouteResult[] {
     const results: RouteResult[] = [];
 
-    // Calculate current time in minutes
-    const currentMinutes = timeToMinutes(currentTime);
-
-    // Calculate 24 hours from now in minutes
-    const twentyFourHoursLater = currentMinutes + 24 * 60; // 24 hours in minutes
-
     // Create a set of from stop IDs and to stop IDs for quick lookup
     const fromStopIds = new Set(fromStops.map((stop) => stop.stop_id));
     const toStopIds = new Set(toStops.map((stop) => stop.stop_id));
@@ -280,18 +274,23 @@ export default function Page() {
             continue;
           }
 
-          // Check if departure time is within our 24-hour window
-          let departureMinutes = timeToMinutes(fromStopTime.departure_time);
+          // Properly handle times - GTFS allows times > 24 hours
+          // For example 25:30:00 means 1:30 AM the next day
+          const departureMinutes = normalizedTimeToMinutes(
+            fromStopTime.departure_time,
+          );
+          const currentNormalizedMinutes = timeToMinutes(currentTime);
 
-          // Handle time wrapping around midnight
-          if (departureMinutes < currentMinutes) {
-            departureMinutes += 24 * 60; // Add 24 hours if it's earlier than current time
-          }
+          // Calculate 24 hour window from now
+          const windowEnd = currentNormalizedMinutes + 24 * 60;
 
-          // Only include departures in the next 24 hours
+          // Check if departure is within our 24-hour window
+          // For times after midnight, we need special handling
           if (
-            departureMinutes >= currentMinutes &&
-            departureMinutes <= twentyFourHoursLater
+            (departureMinutes >= currentNormalizedMinutes &&
+              departureMinutes <= windowEnd) ||
+            (departureMinutes + 24 * 60 >= currentNormalizedMinutes &&
+              departureMinutes + 24 * 60 <= windowEnd)
           ) {
             const tripInfo = tripsInfoMap.get(tripId);
 
@@ -311,15 +310,21 @@ export default function Page() {
       }
     });
 
-    // Sort by departure time
+    // Sort by departure time, with proper handling of times > 24h
     return results.sort((a, b) => {
-      let aMinutes = timeToMinutes(a.departureTime);
-      let bMinutes = timeToMinutes(b.departureTime);
+      const aDepartureMinutes = normalizedTimeToMinutes(a.departureTime);
+      const bDepartureMinutes = normalizedTimeToMinutes(b.departureTime);
+      const currentNormalizedMinutes = timeToMinutes(currentTime);
 
-      if (aMinutes < currentMinutes) aMinutes += 24 * 60;
-      if (bMinutes < currentMinutes) bMinutes += 24 * 60;
+      // Adjust times to be relative to current time for sorting
+      let adjustedA = aDepartureMinutes;
+      let adjustedB = bDepartureMinutes;
 
-      return aMinutes - bMinutes;
+      // If time is earlier today, it's actually tomorrow (add 24h)
+      if (adjustedA < currentNormalizedMinutes) adjustedA += 24 * 60;
+      if (adjustedB < currentNormalizedMinutes) adjustedB += 24 * 60;
+
+      return adjustedA - adjustedB;
     });
   }
 
@@ -410,7 +415,7 @@ export default function Page() {
                     <p className='text-xs text-gray-500'>Departure</p>
                     <div className='flex items-center'>
                       <p className='font-bold text-blue-600'>
-                        {formatTime(route.departureTime)}
+                        {formatTimeDisplay(route.departureTime)}
                       </p>
                       {!isRouteToday(currentTime, route.departureTime) && (
                         <span className='ml-2 text-xs text-orange-600'>
@@ -424,7 +429,7 @@ export default function Page() {
                     <p className='text-xs text-gray-500'>Arrival</p>
                     <div className='flex items-center'>
                       <p className='font-bold text-green-600'>
-                        {formatTime(route.arrivalTime)}
+                        {formatTimeDisplay(route.arrivalTime)}
                       </p>
                       {determineArrivalDay(
                         currentTime,
@@ -471,6 +476,13 @@ export default function Page() {
 }
 
 function isRouteToday(currentTime: string, departureTime: string): boolean {
+  const departureHour = parseInt(departureTime.split(':')[0], 10);
+
+  // If time has hours >= 24, it's always "tomorrow" or later
+  if (departureHour >= 24) {
+    return false;
+  }
+
   const currentMinutes = timeToMinutes(currentTime);
   const departureMinutes = timeToMinutes(departureTime);
 
@@ -478,14 +490,36 @@ function isRouteToday(currentTime: string, departureTime: string): boolean {
 }
 
 function getWaitTime(currentTime: string, departureTime: string): string {
+  let waitMinutes;
+  const departureHour = parseInt(departureTime.split(':')[0], 10);
   const currentMinutes = timeToMinutes(currentTime);
-  let departureMinutes = timeToMinutes(departureTime);
 
-  if (departureMinutes < currentMinutes) {
-    departureMinutes += 24 * 60;
+  // Handle times with hours >= 24 (next day)
+  if (departureHour >= 24) {
+    // Calculate how many days in the future
+    const daysAhead = Math.floor(departureHour / 24);
+    // Get normalized hours for that day
+    const normalizedHour = departureHour % 24;
+    const normalizedDepartureTime = `${normalizedHour.toString().padStart(2, '0')}:${departureTime.split(':')[1]}`;
+    const normalizedDepartureMinutes = timeToMinutes(normalizedDepartureTime);
+
+    // Calculate wait time including the days ahead
+    waitMinutes =
+      daysAhead * 24 * 60 + normalizedDepartureMinutes - currentMinutes;
+
+    // If still negative, it means we wrap around to the next day
+    if (waitMinutes < 0) {
+      waitMinutes += 24 * 60;
+    }
+  } else {
+    // Standard case for same day times
+    let departureMinutes = timeToMinutes(departureTime);
+    if (departureMinutes < currentMinutes) {
+      departureMinutes += 24 * 60; // Next day
+    }
+    waitMinutes = departureMinutes - currentMinutes;
   }
 
-  const waitMinutes = departureMinutes - currentMinutes;
   const waitHours = Math.floor(waitMinutes / 60);
   const remainingMinutes = waitMinutes % 60;
 
@@ -496,6 +530,19 @@ function getWaitTime(currentTime: string, departureTime: string): string {
   }
 }
 
+// Format time for display, normalizing hours > 24 to 0-23 range
+function formatTimeDisplay(timeString: string): string {
+  const parts = timeString.split(':');
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1];
+
+  // Normalize hours to 0-23 range for display
+  hours = hours % 24;
+
+  return `${hours.toString().padStart(2, '0')}:${minutes}`;
+}
+
+// Original formatTime function keeps original GTFS format but just trims seconds
 function formatTime(timeString: string): string {
   return timeString.substring(0, 5);
 }
@@ -525,11 +572,50 @@ function timeToMinutes(timeString: string): number {
   return hours * 60 + minutes;
 }
 
+// This function handles GTFS times that can exceed 24 hours
+// It normalizes them to standard 0-23 hour format for comparisons
+function normalizedTimeToMinutes(timeString: string): number {
+  const [hoursStr, minutesStr] = timeString.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = parseInt(minutesStr, 10);
+
+  // Normalize hours to 0-23 range for comparison
+  hours = hours % 24;
+
+  return hours * 60 + minutes;
+}
+
 function determineArrivalDay(
   currentTime: string,
   departureTime: string,
   arrivalTime: string,
 ): JSX.Element | null {
+  // Extract hours to check if any time is on a future day (hours >= 24)
+  const departureHour = parseInt(departureTime.split(':')[0], 10);
+  const arrivalHour = parseInt(arrivalTime.split(':')[0], 10);
+
+  // If departure is already on a future day
+  if (departureHour >= 24) {
+    const departureDays = Math.floor(departureHour / 24);
+    const arrivalDays = Math.floor(arrivalHour / 24);
+
+    // If arrival is on an even later day than departure
+    if (arrivalDays > departureDays) {
+      return (
+        <span className='ml-2 text-xs text-red-600'>{`(+${arrivalDays - departureDays + 1} days)`}</span>
+      );
+    }
+
+    // Normal "next day" case
+    return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
+  }
+
+  // If arrival hour is 24+, it's explicitly the next day
+  if (arrivalHour >= 24) {
+    return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
+  }
+
+  // Use normalized times for comparison
   const departureMinutes = timeToMinutes(departureTime);
   const arrivalMinutes = timeToMinutes(arrivalTime);
 
