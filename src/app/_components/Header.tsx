@@ -180,10 +180,12 @@ function Header({ session }: HeaderProps) {
               className='ml-10 inline-block h-16 cursor-pointer'
             />
           </div>
-          <span className='bg-primary my-12 inline-block rounded-2xl px-8 py-3'>
-            <span className='text-xl font-bold'>Find Route</span>
-            <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
-          </span>
+          <Link onClick={(prev) => setIsMenuOpen(!prev)} href='/find'>
+            <span className='bg-primary my-12 inline-block rounded-2xl px-8 py-3'>
+              <span className='text-xl font-bold'>Find Route</span>
+              <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
+            </span>
+          </Link>
 
           {session ? (
             <div className='flex flex-col items-center gap-2'>
