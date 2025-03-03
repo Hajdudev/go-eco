@@ -1,6 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import { useAppContext } from '../context/AppProvider';
+import { useAppContext } from '../../context/AppProvider';
 import { Trip, StopTime, Stop } from '@/types/gtfs';
 import { getStopTimes } from '@/services/apiGetData';
 import { useState, useEffect, JSX } from 'react';

@@ -7,6 +7,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAppContext } from '../context/AppProvider';
+import Link from 'next/link';
 
 function Header() {
   const { isMenuOpen, setIsMenuOpen } = useAppContext();
@@ -18,29 +19,39 @@ function Header() {
     <div>
       <div className='align-center mx-4 mt-2 flex justify-between md:mx-8'>
         <div className='align-center flex grow-1 items-center'>
-          <span className='text-background-text text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
-            GoEco 🌿
-          </span>
+          <Link href='/'>
+            <span className='text-background-text text-lg font-bold md:text-2xl lg:mr-2 lg:text-4xl'>
+              GoEco 🌿
+            </span>
+          </Link>
           <div className='lg:24 hidden font-bold md:mr-10 md:flex md:max-w-64 md:grow-1 md:justify-between lg:max-w-80 lg:text-2xl'>
-            <span className='text-background-text group relative'>
-              Prices
-              <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
-            </span>
-            <span className='text-background-text group relative'>
-              About
-              <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
-            </span>
-            <span className='text-background-text group relative'>
-              Contact
-              <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
-            </span>
+            <Link href='/prices'>
+              <span className='text-background-text group relative'>
+                Prices
+                <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
+              </span>
+            </Link>
+            <Link href='/about'>
+              <span className='text-background-text group relative'>
+                About
+                <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
+              </span>
+            </Link>
+            <Link href='/contact'>
+              <span className='text-background-text group relative'>
+                Contact
+                <span className='absolute bottom-0 left-0 h-0.5 w-full scale-x-0 bg-current transition-transform duration-300 ease-out group-hover:scale-x-100'></span>
+              </span>
+            </Link>
           </div>
         </div>
         <div className='flex items-center gap-5'>
-          <span className='bg-primary rounded-full px-4 py-3'>
-            <span className='text-xl font-bold'>Find Route</span>
-            <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
-          </span>
+          <Link href='/find'>
+            <span className='bg-primary rounded-full px-4 py-3'>
+              <span className='text-xl font-bold'>Find Route</span>
+              <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
+            </span>
+          </Link>
           <span className='bg-secondary hidden rounded-full px-4 py-3.5 text-xl font-bold text-white md:inline-block'>
             Signup/Register
           </span>

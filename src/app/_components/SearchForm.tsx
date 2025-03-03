@@ -79,7 +79,7 @@ const SearchForm = () => {
           onFocus={handleFocus('to')}
           onBlur={handleBlur}
         />
-        <Link href={`/route?from=${fromValue}&to=${toValue}`}>
+        <Link href={`/find/route?from=${fromValue}&to=${toValue}`}>
           <Button text='Search a route' color='primary' value='search' />
         </Link>
         {showSuggestions && activeSuggestionPosition && (
