@@ -210,18 +210,24 @@ function Header({ session }: HeaderProps) {
           )}
 
           <div className='mt-24 flex flex-col items-center justify-between gap-6 text-3xl font-bold text-white'>
-            <div>
-              <span>About</span>
-              <ArrowRightIcon className='ml-3 inline h-6 w-6' />
-            </div>
-            <div>
-              <span>Contact</span>
-              <ArrowRightIcon className='ml-3 inline h-6 w-6' />
-            </div>
-            <div>
-              <span>Price</span>
-              <ArrowRightIcon className='ml-3 inline h-6 w-6' />
-            </div>
+            <Link onClick={(prev) => setIsMenuOpen(!prev)} href='/about'>
+              <div>
+                <span>About</span>
+                <ArrowRightIcon className='ml-3 inline h-6 w-6' />
+              </div>
+            </Link>
+            <Link onClick={(prev) => setIsMenuOpen(!prev)} href='/contact'>
+              <div>
+                <span>Contact</span>
+                <ArrowRightIcon className='ml-3 inline h-6 w-6' />
+              </div>
+            </Link>
+            <Link onClick={(prev) => setIsMenuOpen(!prev)} href='/prices'>
+              <div>
+                <span>Price</span>
+                <ArrowRightIcon className='ml-3 inline h-6 w-6' />
+              </div>
+            </Link>
           </div>
         </div>
       </div>
