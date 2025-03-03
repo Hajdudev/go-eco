@@ -1,6 +1,5 @@
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   redirects: async () => {
     return [
       {
@@ -16,10 +15,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
         port: '',
-        pathname: '/**', // Allow any path under the domain
+        pathname: '/**',
       },
     ],
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

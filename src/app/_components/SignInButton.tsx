@@ -15,7 +15,7 @@ function SignInButton() {
     <button
       onClick={handleSignIn}
       disabled={isLoading}
-      className='bg-secondary inline-block rounded-2xl px-8 py-4 text-xl font-bold text-white disabled:opacity-70'
+      className='bg-secondary rounded-full px-2 py-2 text-xl font-bold text-white disabled:opacity-70 md:inline-block'
     >
       {isLoading ? 'Loading...' : 'Signup/Register'}
     </button>

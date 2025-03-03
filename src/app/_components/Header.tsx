@@ -9,13 +9,21 @@ import {
 import { useAppContext } from '../context/AppProvider';
 import Link from 'next/link';
 import SignInButton from './SignInButton';
+import { Session } from 'next-auth';
+import Image from 'next/image';
+import LogOutButton from './LogOutButton';
 
-function Header() {
+interface HeaderProps {
+  session: Session | null;
+}
+
+function Header({ session }: HeaderProps) {
   const { isMenuOpen, setIsMenuOpen } = useAppContext();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
   return (
     <div>
       <div className='align-center mx-4 mt-2 flex justify-between md:mx-8'>
@@ -53,7 +61,29 @@ function Header() {
               <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
             </span>
           </Link>
-          <SignInButton />
+
+          {session ? (
+            <div className='hidden items-center gap-2 md:flex'>
+              <span className='text-sm font-medium'>
+                Hi, {session.user?.name}
+              </span>
+              {session.user?.image && (
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || 'User'}
+                  width={40}
+                  height={40}
+                  className='rounded-full'
+                />
+              )}
+              <LogOutButton />
+            </div>
+          ) : (
+            <div className='hidden md:flex'>
+              <SignInButton />
+            </div>
+          )}
+
           <Bars3Icon
             onClick={toggleMenu}
             className='inline-block h-16 cursor-pointer md:hidden'
@@ -61,8 +91,9 @@ function Header() {
         </div>
       </div>
 
+      {/* Mobile menu */}
       <div
-        className={`bg-slateblack fixed top-0 right-0 h-screen w-[80%] transform rounded-l-3xl transition-transform duration-300 ease-in-out ${
+        className={`bg-slateblack fixed top-0 right-0 z-50 h-screen w-[80%] transform rounded-l-3xl transition-transform duration-300 ease-in-out ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -78,7 +109,31 @@ function Header() {
             <span className='text-xl font-bold'>Find Route</span>
             <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
           </span>
-          <SignInButton />
+
+          {session ? (
+            <div className='flex flex-col items-center gap-2'>
+              {session.user?.image && (
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || 'User'}
+                  width={64}
+                  height={64}
+                  className='rounded-full'
+                />
+              )}
+              <span className='text-lg font-bold text-white'>
+                {session.user?.name}
+              </span>
+              <div onClick={(prev) => setIsMenuOpen(!prev)}>
+                <LogOutButton />
+              </div>
+            </div>
+          ) : (
+            <div onClick={(prev) => setIsMenuOpen(!prev)}>
+              <SignInButton />
+            </div>
+          )}
+
           <div className='mt-24 flex flex-col items-center justify-between gap-6 text-3xl font-bold text-white'>
             <div>
               <span>About</span>

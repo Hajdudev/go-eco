@@ -12,15 +12,23 @@ export default function SignIn() {
   const error = searchParams.get('error');
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    await signIn('google', { callbackUrl });
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      await signIn('google', { callbackUrl });
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className='flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8'>
+    <div className='bg-mist flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8'>
       <div className='w-full max-w-md space-y-8'>
         <div>
+          <h1 className='text-center text-4xl font-bold tracking-tight text-gray-900'>
+            GoEco 🌿
+          </h1>
           <h2 className='mt-6 text-center text-3xl font-bold tracking-tight text-gray-900'>
             Sign in to your account
           </h2>
@@ -30,23 +38,22 @@ export default function SignIn() {
             </div>
           )}
         </div>
+
         <div className='mt-8 space-y-6'>
-          <div className='space-y-4'>
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              className='group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50'
-            >
-              <span className='absolute inset-y-0 left-0 flex items-center pl-3'>
-                {/* Google logo or icon can go here */}
-              </span>
-              {isLoading ? 'Signing in...' : 'Sign in with Google'}
-            </button>
-          </div>
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            className='bg-primary group hover:bg-opacity-90 relative flex w-full justify-center rounded-md px-4 py-3 text-lg font-bold text-white focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none disabled:opacity-70'
+          >
+            {isLoading ? 'Signing in...' : 'Sign in with Google'}
+          </button>
         </div>
 
         <div className='mt-6 text-center'>
-          <Link href='/' className='text-blue-600 hover:text-blue-800'>
+          <Link
+            href='/find'
+            className='text-background-text text-lg hover:underline'
+          >
             Back to home
           </Link>
         </div>
