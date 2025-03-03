@@ -20,7 +20,7 @@ export default async function Settings() {
             <h2 className='text-xl font-semibold'>Account Preferences</h2>
             <div className='rounded-lg border border-gray-200 p-4'>
               <p className='text-gray-700'>
-                You're signed in as <strong>{session.user?.email}</strong>
+                You re signed in as <strong>{session.user?.email}</strong>
               </p>
               <p className='mt-2 text-sm text-gray-500'>
                 Connected with Google Account
