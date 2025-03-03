@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAppContext } from '../context/AppProvider';
 import Link from 'next/link';
+import SignInButton from './SignInButton';
 
 function Header() {
   const { isMenuOpen, setIsMenuOpen } = useAppContext();
@@ -52,9 +53,7 @@ function Header() {
               <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
             </span>
           </Link>
-          <span className='bg-secondary hidden rounded-full px-4 py-3.5 text-xl font-bold text-white md:inline-block'>
-            Signup/Register
-          </span>
+          <SignInButton />
           <Bars3Icon
             onClick={toggleMenu}
             className='inline-block h-16 cursor-pointer md:hidden'
@@ -79,9 +78,7 @@ function Header() {
             <span className='text-xl font-bold'>Find Route</span>
             <MagnifyingGlassIcon className='ml-1 inline-block h-7 rotate-90' />
           </span>
-          <span className='bg-secondary inline-block rounded-2xl px-8 py-4 text-xl font-bold text-white'>
-            Signup/Register
-          </span>
+          <SignInButton />
           <div className='mt-24 flex flex-col items-center justify-between gap-6 text-3xl font-bold text-white'>
             <div>
               <span>About</span>

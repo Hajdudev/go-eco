@@ -1,21 +1,24 @@
 import React from 'react';
 import Header from './_components/Header';
 import './globals.css';
-import { Provider } from './context/Provider';
+import { Providers } from './providers';
 import './globals.css';
+import { Provider } from './context/Provider';
 
-export default async function Layout({
+export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang='en'>
       <body className='bg-mist overflow-x-hidden'>
-        <Provider>
-          <Header />
-          {children}
-        </Provider>
+        <Providers>
+          <Provider>
+            <Header />
+            {children}
+          </Provider>
+        </Providers>
       </body>
     </html>
   );
