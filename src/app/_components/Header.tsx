@@ -12,6 +12,7 @@ import SignInButton from './SignInButton';
 import { Session } from 'next-auth';
 import Image from 'next/image';
 import LogOutButton from './LogOutButton';
+import { useState, useRef, useEffect } from 'react';
 
 interface HeaderProps {
   session: Session | null;
@@ -19,10 +20,29 @@ interface HeaderProps {
 
 function Header({ session }: HeaderProps) {
   const { isMenuOpen, setIsMenuOpen } = useAppContext();
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        popupRef.current &&
+        !popupRef.current.contains(event.target as Node)
+      ) {
+        setShowProfilePopup(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div>
@@ -63,20 +83,75 @@ function Header({ session }: HeaderProps) {
           </Link>
 
           {session ? (
-            <div className='hidden items-center gap-2 md:flex'>
-              <span className='text-sm font-medium'>
-                Hi, {session.user?.name}
-              </span>
-              {session.user?.image && (
-                <Image
-                  src={session.user.image}
-                  alt={session.user.name || 'User'}
-                  width={40}
-                  height={40}
-                  className='rounded-full'
-                />
+            <div className='relative hidden items-center gap-2 md:flex'>
+              <div
+                className='relative flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-90'
+                onClick={() => setShowProfilePopup(!showProfilePopup)}
+              >
+                <span className='text-sm font-medium'>
+                  Hi, {session.user?.name}
+                </span>
+                {session.user?.image && (
+                  <Image
+                    src={session.user.image}
+                    alt={session.user.name || 'User'}
+                    width={40}
+                    height={40}
+                    className='rounded-full'
+                  />
+                )}
+                {/* Dropdown indicator */}
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  width='16'
+                  height='16'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  className={`transition-transform duration-300 ${showProfilePopup ? 'rotate-180' : ''}`}
+                >
+                  <path d='M6 9l6 6 6-6' />
+                </svg>
+              </div>
+
+              {/* Profile popup */}
+              {showProfilePopup && (
+                <div
+                  ref={popupRef}
+                  className='ring-opacity-5 absolute top-full right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white ring-1 shadow-lg ring-black focus:outline-none'
+                >
+                  <div className='py-1'>
+                    <div className='block border-b border-gray-100 px-4 py-2 text-sm text-gray-700'>
+                      <p className='font-medium text-gray-900'>
+                        {session.user?.name}
+                      </p>
+                      <p className='truncate text-xs text-gray-500'>
+                        {session.user?.email}
+                      </p>
+                    </div>
+                    <Link href='/profile'>
+                      <span className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'>
+                        Your Profile
+                      </span>
+                    </Link>
+                    <Link href='/settings'>
+                      <span className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'>
+                        Settings
+                      </span>
+                    </Link>
+                    <div className='border-t border-gray-100 pt-1'>
+                      <Link href='/auth/signout'>
+                        <span className='block px-4 py-2 text-sm text-red-600 hover:bg-gray-100'>
+                          Sign out
+                        </span>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               )}
-              <LogOutButton />
             </div>
           ) : (
             <div className='hidden md:flex'>
