@@ -26,17 +26,6 @@ export default function Page() {
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
   const [currentTime, setCurrentTime] = useState<string>('');
 
-  // Debug info
-  useEffect(() => {
-    console.log('Data check:', {
-      haveFrom: !!from,
-      haveTo: !!to,
-      markersLength: markers.length,
-      tripsLength: trips.length,
-      haveCurrentTime: !!currentTime,
-    });
-  }, [from, to, markers, trips, currentTime]);
-
   // Get and format current time when component loads
   useEffect(() => {
     const now = new Date();
@@ -84,10 +73,11 @@ export default function Page() {
 
         // Find the stops by name
         if (isMounted) setLoadingStatus('Finding stops...');
-        const fromStop = markers.find((stop) => stop.name === from);
-        const toStop = markers.find((stop) => stop.name === to);
+        // Get all possible stops with the given names (handling duplicates)
+        const fromStops = markers.filter((stop) => stop.name === from);
+        const toStops = markers.filter((stop) => stop.name === to);
 
-        if (!fromStop) {
+        if (fromStops.length === 0) {
           if (isMounted) {
             setError(`Could not locate departure stop "${from}"`);
             setLoading(false);
@@ -95,7 +85,7 @@ export default function Page() {
           return;
         }
 
-        if (!toStop) {
+        if (toStops.length === 0) {
           if (isMounted) {
             setError(`Could not locate arrival stop "${to}"`);
             setLoading(false);
@@ -103,11 +93,21 @@ export default function Page() {
           return;
         }
 
-        // Get stop times
+        // Get stop times for all possible stops
         if (isMounted) setLoadingStatus('Fetching departure times...');
-        const fromStopTimes = await getStopTimes(fromStop.stop_id);
 
-        if (fromStopTimes.length === 0) {
+        // Fetch stop times for all possible from stops
+        const allFromStopTimes: StopTime[] = [];
+        for (const fromStop of fromStops) {
+          if (isMounted)
+            setLoadingStatus(
+              `Fetching times for ${fromStop.name} (${fromStop.stop_id})...`,
+            );
+          const stopTimes = await getStopTimes(fromStop.stop_id);
+          allFromStopTimes.push(...stopTimes);
+        }
+
+        if (allFromStopTimes.length === 0) {
           if (isMounted) {
             setError(`No scheduled departures found for stop "${from}"`);
             setLoading(false);
@@ -116,9 +116,19 @@ export default function Page() {
         }
 
         if (isMounted) setLoadingStatus('Fetching arrival times...');
-        const toStopTimes = await getStopTimes(toStop.stop_id);
 
-        if (toStopTimes.length === 0) {
+        // Fetch stop times for all possible to stops
+        const allToStopTimes: StopTime[] = [];
+        for (const toStop of toStops) {
+          if (isMounted)
+            setLoadingStatus(
+              `Fetching times for ${toStop.name} (${toStop.stop_id})...`,
+            );
+          const stopTimes = await getStopTimes(toStop.stop_id);
+          allToStopTimes.push(...stopTimes);
+        }
+
+        if (allToStopTimes.length === 0) {
           if (isMounted) {
             setError(`No scheduled arrivals found for stop "${to}"`);
             setLoading(false);
@@ -132,10 +142,10 @@ export default function Page() {
           if (!isMounted) return;
 
           const results = findRouteSync({
-            fromStop,
-            toStop,
-            fromStopTimes,
-            toStopTimes,
+            fromStops,
+            toStops,
+            fromStopTimes: allFromStopTimes,
+            toStopTimes: allToStopTimes,
             trips,
             currentTime,
           });
@@ -152,7 +162,6 @@ export default function Page() {
           setLoading(false);
         }, 10); // Small delay to let UI update
       } catch (err) {
-        console.error('Error finding routes:', err);
         if (isMounted) {
           setError('Failed to find routes. Please try again later.');
           setLoading(false);
@@ -169,15 +178,15 @@ export default function Page() {
 
   // Synchronous version of route finding to avoid multiple async/await operations
   function findRouteSync({
-    fromStop,
-    toStop,
+    fromStops,
+    toStops,
     fromStopTimes,
     toStopTimes,
     trips,
     currentTime,
   }: {
-    fromStop: Stop;
-    toStop: Stop;
+    fromStops: Stop[];
+    toStops: Stop[];
     fromStopTimes: StopTime[];
     toStopTimes: StopTime[];
     trips: Trip[];
@@ -191,90 +200,118 @@ export default function Page() {
     // Calculate 24 hours from now in minutes
     const twentyFourHoursLater = currentMinutes + 24 * 60; // 24 hours in minutes
 
-    console.log(
-      `Finding routes from ${currentMinutes} to ${twentyFourHoursLater} minutes`,
-    );
-    console.log(
-      `From stop times: ${fromStopTimes.length}, To stop times: ${toStopTimes.length}`,
+    // Create a set of from stop IDs and to stop IDs for quick lookup
+    const fromStopIds = new Set(fromStops.map((stop) => stop.stop_id));
+    const toStopIds = new Set(toStops.map((stop) => stop.stop_id));
+
+    // First create an index of all trip IDs that might connect our stops
+    const fromTripIds = new Set(fromStopTimes.map((st) => st.trip_id));
+    const toTripIds = new Set(toStopTimes.map((st) => st.trip_id));
+
+    // Find trips that visit both from and to stops
+    const commonTripIds = new Set(
+      [...fromTripIds].filter((id) => toTripIds.has(id)),
     );
 
-    // Quick lookup maps to improve performance
-    const tripMap = new Map<string, StopTime[]>();
+    // Create maps for faster lookups
     const tripsInfoMap = new Map<string, Trip>();
+    const stopNamesMap = new Map<string, string>();
 
     // Pre-build trip info map for faster lookups
     trips.forEach((trip) => {
       tripsInfoMap.set(trip.trip_id, trip);
     });
 
-    // Group from stop times by trip_id - only process what we need
-    let withinTimeWindow = 0;
+    // Build a map of stop IDs to stop names
+    fromStops.forEach((stop) => {
+      stopNamesMap.set(stop.stop_id, stop.name);
+    });
+    toStops.forEach((stop) => {
+      stopNamesMap.set(stop.stop_id, stop.name);
+    });
+
+    // Group and index stop times by trip_id
+    const fromStopTimesByTrip = new Map<string, StopTime[]>();
+    const toStopTimesByTrip = new Map<string, StopTime[]>();
+
+    // Only process common trips to improve performance
     fromStopTimes.forEach((stopTime) => {
-      let departureMinutes = timeToMinutes(stopTime.departure_time);
-
-      // Handle time wrapping around midnight (when departure is earlier in the day than current time)
-      if (departureMinutes < currentMinutes) {
-        departureMinutes += 24 * 60; // Add 24 hours if it's earlier than current time
-      }
-
-      // Only include departures in the next 24 hours
       if (
-        departureMinutes >= currentMinutes &&
-        departureMinutes <= twentyFourHoursLater
+        commonTripIds.has(stopTime.trip_id) &&
+        fromStopIds.has(stopTime.stop_id)
       ) {
-        withinTimeWindow++;
-        if (!tripMap.has(stopTime.trip_id)) {
-          tripMap.set(stopTime.trip_id, []);
+        if (!fromStopTimesByTrip.has(stopTime.trip_id)) {
+          fromStopTimesByTrip.set(stopTime.trip_id, []);
         }
-        tripMap.get(stopTime.trip_id)?.push(stopTime);
+        fromStopTimesByTrip.get(stopTime.trip_id)?.push(stopTime);
       }
     });
 
-    console.log(`Departures within time window: ${withinTimeWindow}`);
-    console.log(`Trip map size: ${tripMap.size}`);
-
-    // Find matching trips and valid sequences
-    let matchingTrips = 0;
-    let sequenceIssues = 0;
-    for (const toStopTime of toStopTimes) {
-      const fromStopTimesForTrip = tripMap.get(toStopTime.trip_id);
-
-      if (fromStopTimesForTrip) {
-        matchingTrips++;
-        // For this trip, find from stops that come before the to stop
-        const validFromStops = fromStopTimesForTrip.filter(
-          (fromTime) =>
-            Number(fromTime.stop_sequence) < Number(toStopTime.stop_sequence),
-        );
-
-        if (validFromStops.length === 0) {
-          sequenceIssues++;
-          continue;
+    toStopTimes.forEach((stopTime) => {
+      if (
+        commonTripIds.has(stopTime.trip_id) &&
+        toStopIds.has(stopTime.stop_id)
+      ) {
+        if (!toStopTimesByTrip.has(stopTime.trip_id)) {
+          toStopTimesByTrip.set(stopTime.trip_id, []);
         }
-
-        // Use the earliest valid from stop
-        const validFromStop = validFromStops.reduce((earliest, current) =>
-          earliest.departure_time < current.departure_time ? earliest : current,
-        );
-
-        const tripInfo = tripsInfoMap.get(toStopTime.trip_id);
-
-        results.push({
-          tripId: toStopTime.trip_id,
-          tripName: tripInfo?.trip_headsign || 'Unknown',
-          routeName: tripInfo?.route_id || 'Unknown',
-          departureTime: validFromStop.departure_time,
-          arrivalTime: toStopTime.arrival_time,
-          fromStopName: fromStop.name,
-          toStopName: toStop.name,
-        });
+        toStopTimesByTrip.get(stopTime.trip_id)?.push(stopTime);
       }
-    }
+    });
 
-    console.log(
-      `Matching trips: ${matchingTrips}, Sequence issues: ${sequenceIssues}, Final results: ${results.length}`,
-    );
+    // Process each common trip
+    commonTripIds.forEach((tripId) => {
+      const fromTimesForTrip = fromStopTimesByTrip.get(tripId) || [];
+      const toTimesForTrip = toStopTimesByTrip.get(tripId) || [];
 
+      // Skip if we don't have both departure and arrival data
+      if (fromTimesForTrip.length === 0 || toTimesForTrip.length === 0) {
+        return;
+      }
+
+      // For each departure and arrival on this trip
+      for (const fromStopTime of fromTimesForTrip) {
+        for (const toStopTime of toTimesForTrip) {
+          // Validate that departure comes before arrival in the trip sequence
+          if (
+            Number(fromStopTime.stop_sequence) >=
+            Number(toStopTime.stop_sequence)
+          ) {
+            continue;
+          }
+
+          // Check if departure time is within our 24-hour window
+          let departureMinutes = timeToMinutes(fromStopTime.departure_time);
+
+          // Handle time wrapping around midnight
+          if (departureMinutes < currentMinutes) {
+            departureMinutes += 24 * 60; // Add 24 hours if it's earlier than current time
+          }
+
+          // Only include departures in the next 24 hours
+          if (
+            departureMinutes >= currentMinutes &&
+            departureMinutes <= twentyFourHoursLater
+          ) {
+            const tripInfo = tripsInfoMap.get(tripId);
+
+            results.push({
+              tripId: tripId,
+              tripName: tripInfo?.trip_headsign || 'Unknown',
+              routeName: tripInfo?.route_id || 'Unknown',
+              departureTime: fromStopTime.departure_time,
+              arrivalTime: toStopTime.arrival_time,
+              fromStopName:
+                stopNamesMap.get(fromStopTime.stop_id) || fromStopTime.stop_id,
+              toStopName:
+                stopNamesMap.get(toStopTime.stop_id) || toStopTime.stop_id,
+            });
+          }
+        }
+      }
+    });
+
+    // Sort by departure time
     return results.sort((a, b) => {
       let aMinutes = timeToMinutes(a.departureTime);
       let bMinutes = timeToMinutes(b.departureTime);
