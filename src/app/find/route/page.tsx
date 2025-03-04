@@ -156,12 +156,13 @@ export default function Page() {
             );
           } else {
             setError(null);
+            if (from && to && user) {
+              setUserRecentRoute(from, to, user);
+            }
           }
 
           setRoutes(results);
-          if (from && to && user) {
-            setUserRecentRoute(from, to, user);
-          }
+
           setLoading(false);
         }, 10);
       } catch {
