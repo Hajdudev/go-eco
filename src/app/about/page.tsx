@@ -126,7 +126,7 @@ function AboutPage() {
                 </div>
               </div>
               <h3 className='mt-6 text-xl font-medium text-gray-900'>
-                Emma Johnson
+                Miso Slavik
               </h3>
               <p className='text-sm text-gray-500'>Founder & CEO</p>
               <p className='mt-2 text-base text-gray-500'>
