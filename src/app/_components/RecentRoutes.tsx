@@ -10,6 +10,9 @@ function RecentRoutes() {
   const recentRoutes = user?.recent_rides || [];
   const isLoading = status === 'loading';
 
+  // Calculate placeholder items needed to reach 7 total items
+  const placeholderCount = Math.max(0, 7 - recentRoutes.length);
+
   if (isLoading) {
     return (
       <div>
@@ -40,28 +43,50 @@ function RecentRoutes() {
           </div>
         ) : (
           // Case when user has recent routes
-          recentRoutes.map((route, index) => {
-            const isLastItem = index === recentRoutes.length - 1;
-            // Parse the route string to get from/to values
-            const parts = route.split(' → ');
-            const from = parts[0];
-            const to = parts[1];
+          <div>
+            {/* Render actual routes */}
+            {recentRoutes.map((route, index) => {
+              const parts = route.split(' → ');
+              const from = parts[0];
+              const to = parts[1];
+              const isLastItem =
+                index === recentRoutes.length - 1 && placeholderCount === 0;
 
-            return (
-              <div key={`route-${index}`}>
-                <div className='bg-slateblack h-1 w-full'></div>
-                <Link
-                  href={`/find//route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
-                >
-                  <div
-                    className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
+              return (
+                <div key={`route-${index}`}>
+                  <div className='bg-slateblack h-1 w-full'></div>
+                  <Link
+                    href={`/find/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
                   >
-                    {route}
+                    <div
+                      className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
+                    >
+                      {route}
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+
+            {/* Render placeholder items to fill space */}
+            {Array(placeholderCount)
+              .fill(0)
+              .map((_, index) => {
+                const isLastPlaceholder = index === placeholderCount - 1;
+
+                return (
+                  <div key={`placeholder-${index}`}>
+                    <div className='bg-slateblack h-1 w-full'></div>
+                    <div
+                      className={`bg-mist p-4 opacity-50 ${isLastPlaceholder ? 'rounded-b-2xl' : ''}`}
+                    >
+                      <div className='h-6'></div>{' '}
+                      {/* Empty space with same height as route text */}
+                    </div>
                   </div>
-                </Link>
-              </div>
-            );
-          })
+                );
+              })}
+          </div>
         )
       ) : (
         // Case when user is not logged in

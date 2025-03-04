@@ -60,7 +60,7 @@ export async function setUserRecentRoute(
         // Add the new route to the beginning
         updatedRoutes.unshift(routeString);
         // Limit to 5 routes
-        updatedRoutes = updatedRoutes.slice(0, 5);
+        updatedRoutes = updatedRoutes.slice(0, 7);
       } else {
         // Handle case where recent_rides is not an array
         updatedRoutes = [routeString];
