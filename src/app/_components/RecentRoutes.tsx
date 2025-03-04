@@ -32,13 +32,8 @@ function RecentRoutes() {
           // Case when user is logged in but has no recent routes
           <div>
             <div className='bg-slateblack h-1 w-full'></div>
-            <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px]'>
-              <span>You don t have any recent routes.</span>
-              <Link href='/'>
-                <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-black'>
-                  Find a route
-                </button>
-              </Link>
+            <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] md:text-2xl lg:min-h-[450px] lg:pt-24 lg:text-4xl'>
+              <span>You don t have any recent routes...</span>
             </div>
           </div>
         ) : (
@@ -92,10 +87,10 @@ function RecentRoutes() {
         // Case when user is not logged in
         <div>
           <div className='bg-slateblack h-1 w-full'></div>
-          <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] lg:min-h-[400px] xl:min-h-[500px]'>
+          <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] md:text-2xl lg:min-h-[400px] lg:pt-24 lg:text-4xl xl:min-h-[500px]'>
             <span>You are not logged in</span>
             <Link href='/auth/signin'>
-              <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-black'>
+              <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-2xl text-black'>
                 Sign in
               </button>
             </Link>
