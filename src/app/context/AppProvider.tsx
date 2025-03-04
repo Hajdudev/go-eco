@@ -1,5 +1,7 @@
 'use client';
 import { Stop, StopTime, Trip } from '@/types/gtfs';
+import { User } from '@/types/session';
+
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 type LatLngLiteral = {
@@ -31,11 +33,16 @@ type AppContextType = {
   setStopTimes: (value: StopTime[]) => void;
   trips: Trip[];
   setTrips: (value: Trip[]) => void;
+  isLoading: boolean;
+  setIsLoading: (value: boolean) => void;
+  user: User | null;
+  setUser: (value: User | null) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [markers, setMarkers] = useState<Stop[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Stop | null>(null);
@@ -49,9 +56,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [toValue, setToValue] = useState('');
   const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   const value = useMemo(
     () => ({
+      user,
+      setUser,
       markers,
       setMarkers,
       selectedPlace,
@@ -72,6 +82,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setStopTimes,
       trips,
       setTrips,
+      isLoading,
+      setIsLoading,
     }),
     [
       markers,
@@ -84,6 +96,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       toValue,
       stopTimes,
       trips,
+      isLoading,
+      user,
     ],
   );
 

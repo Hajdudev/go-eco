@@ -2,23 +2,30 @@
 
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAppContext } from '@/app/context/AppProvider';
 
 export default function SignIn() {
-  const [isLoading, setIsLoading] = useState(false);
+  const { setIsLoading } = useAppContext();
+  const [currentIsLoading, setCurrentIsLoading] = useState(false);
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const error = searchParams.get('error');
 
+  useEffect(() => {
+    setIsLoading(true);
+    return () => setIsLoading(false);
+  }, [setIsLoading]);
+
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
+      setCurrentIsLoading(true);
       await signIn('google', { callbackUrl });
     } catch (error) {
       console.error('Error signing in with Google:', error);
     } finally {
-      setIsLoading(false);
+      setCurrentIsLoading(false);
     }
   };
 
@@ -42,10 +49,10 @@ export default function SignIn() {
         <div className='mt-8 space-y-6'>
           <button
             onClick={handleGoogleSignIn}
-            disabled={isLoading}
+            disabled={currentIsLoading}
             className='bg-primary group hover:bg-opacity-90 relative flex w-full justify-center rounded-md px-4 py-3 text-lg font-bold text-white focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none disabled:opacity-70'
           >
-            {isLoading ? 'Signing in...' : 'Sign in with Google'}
+            {currentIsLoading ? 'Signing in...' : 'Sign in with Google'}
           </button>
         </div>
 

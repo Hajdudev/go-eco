@@ -2,7 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
 import { Trip, StopTime, Stop } from '@/types/gtfs';
-import { getStopTimes } from '@/services/apiGetData';
+import { getStopTimes, setUserRecentRoute } from '@/services/apiGetData';
 import { useState, useEffect, JSX } from 'react';
 
 interface RouteResult {
@@ -16,7 +16,7 @@ interface RouteResult {
 }
 
 export default function Page() {
-  const { trips, markers } = useAppContext();
+  const { trips, markers, user } = useAppContext();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const to = searchParams.get('to');
@@ -159,8 +159,11 @@ export default function Page() {
           }
 
           setRoutes(results);
+          if (from && to && user) {
+            setUserRecentRoute(from, to, user);
+          }
           setLoading(false);
-        }, 10); // Small delay to let UI update
+        }, 10);
       } catch {
         if (isMounted) {
           setError('Failed to find routes. Please try again later.');
@@ -174,7 +177,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, trips, markers, currentTime]);
+  }, [from, to, trips, markers, currentTime, user]);
 
   // Synchronous version of route finding to avoid multiple async/await operations
   function findRouteSync({

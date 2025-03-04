@@ -5,6 +5,7 @@ import { Providers } from './providers';
 import './globals.css';
 import { Provider } from './context/Provider';
 import { auth } from '@/auth';
+import SessionSync from './SessionSync';
 
 export default async function RootLayout({
   children,
@@ -18,6 +19,7 @@ export default async function RootLayout({
       <body className='bg-mist overflow-x-hidden'>
         <Providers>
           <Provider>
+            <SessionSync />
             <Header session={session} />
             {children}
           </Provider>

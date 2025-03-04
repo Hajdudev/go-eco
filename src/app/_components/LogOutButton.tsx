@@ -1,14 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+
+import { useAppContext } from '../context/AppProvider';
 
 function LogOutButton() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading } = useAppContext();
 
   const handleSignOut = () => {
-    setIsLoading(true);
     router.push('/auth/signout');
   };
 

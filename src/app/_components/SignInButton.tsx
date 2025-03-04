@@ -1,13 +1,13 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+
+import { useAppContext } from '../context/AppProvider';
 
 function SignInButton() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading } = useAppContext();
 
   const handleSignIn = () => {
-    setIsLoading(true);
     router.push('/auth/signin');
   };
 

@@ -2,6 +2,97 @@
 import supabase from './supabaseClient';
 
 import { Stop, StopTime, Trip, ShapePoint } from '../types/gtfs';
+import { User } from '@/types/session';
+
+// Fixed function to properly handle user recent routes
+export async function setUserRecentRoute(
+  from: string,
+  to: string,
+  user: User | null,
+) {
+  // Check if user exists - don't proceed if no user
+  if (!user || !user.email) {
+    console.error(
+      'Cannot save route: No user is logged in or email is missing',
+    );
+    return;
+  }
+
+  try {
+    // First, check if user exists in the database
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', user.email)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Error checking if user exists:', fetchError);
+      return;
+    }
+
+    // Format the route for storage
+    const routeString = `${from} → ${to}`;
+
+    // Create/update user with route
+    if (!existingUser) {
+      // User doesn't exist, create a new record
+      const { error: insertError } = await supabase.from('users').insert([
+        {
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          recent_rides: [routeString],
+        },
+      ]);
+
+      if (insertError) {
+        console.error('Error creating user record:', insertError);
+      }
+    } else {
+      // User exists, update their recent routes
+      let updatedRoutes = existingUser.recent_rides || [];
+
+      // Add new route to beginning, limit to 5 most recent routes
+      if (Array.isArray(updatedRoutes)) {
+        // Remove the route if it already exists to avoid duplicates
+        updatedRoutes = updatedRoutes.filter((route) => route !== routeString);
+        // Add the new route to the beginning
+        updatedRoutes.unshift(routeString);
+        // Limit to 5 routes
+        updatedRoutes = updatedRoutes.slice(0, 5);
+      } else {
+        // Handle case where recent_rides is not an array
+        updatedRoutes = [routeString];
+      }
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ recent_rides: updatedRoutes })
+        .eq('email', user.email);
+
+      if (updateError) {
+        console.error('Error updating user routes:', updateError);
+      }
+    }
+  } catch (error) {
+    console.error('Unexpected error in setUserRecentRoute:', error);
+  }
+}
+export async function getUserData(email: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user data:', error);
+    return null;
+  }
+
+  return data;
+}
 
 export async function getUnfilteredStops(): Promise<Stop[]> {
   const { data, error } = await supabase

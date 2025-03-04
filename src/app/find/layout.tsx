@@ -5,6 +5,8 @@ import MapWithData from '../_components/MapWithData';
 import SearchForm from '../_components/SearchForm';
 
 import LoadingSpinner from '../loading';
+import SessionSync from '../SessionSync';
+
 
 export default async function Layout({
   children,
@@ -16,6 +18,7 @@ export default async function Layout({
       <main className='w-full lg:w-[40%]'>
         <SearchForm />
         {children}
+        <SessionSync />
       </main>
       <div className='hidden w-[60%] lg:block'>
         <Suspense fallback={<LoadingSpinner />}>

@@ -1,17 +1,24 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import { useAppContext } from '@/app/context/AppProvider';
 
 export default function SignOut() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentIsLoading, currentSetIsLoading] = useState(false);
+  const { setIsLoading } = useAppContext();
   const router = useRouter();
+
+  useEffect(() => {
+    setIsLoading(true);
+    return () => setIsLoading(false);
+  }, [setIsLoading]);
 
   const handleSignOut = async () => {
     try {
-      setIsLoading(true);
+      currentSetIsLoading(true);
       // The callbackUrl parameter specifies where to redirect after signing out
       await signOut({ callbackUrl: '/find', redirect: true });
 
@@ -19,7 +26,7 @@ export default function SignOut() {
       router.push('/find');
     } catch (error) {
       console.error('Error signing out:', error);
-      setIsLoading(false);
+      currentSetIsLoading(false);
     }
   };
 
@@ -41,10 +48,10 @@ export default function SignOut() {
         <div className='mt-8 space-y-6'>
           <button
             onClick={handleSignOut}
-            disabled={isLoading}
+            disabled={currentIsLoading}
             className='group relative flex w-full justify-center rounded-md bg-red-500 px-4 py-3 text-lg font-bold text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none disabled:opacity-70'
           >
-            {isLoading ? 'Signing out...' : 'Sign out'}
+            {currentIsLoading ? 'Signing out...' : 'Sign out'}
           </button>
 
           <Link href='/find'>
