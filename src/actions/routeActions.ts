@@ -1,7 +1,12 @@
 'use server';
 
 import { Trip, StopTime, Stop } from '@/types/gtfs';
-import { getStopTimes, getTodayCalendar } from '@/services/apiGetData';
+import {
+  getStopTimes,
+  getTodayCalendar,
+  getStopsByName,
+  getTripsForServiceIds,
+} from '@/services/apiGetData';
 import { User } from '@/types/session';
 import { setUserRecentRoute } from '@/services/apiGetData';
 
@@ -16,13 +21,12 @@ export interface RouteResult {
   toStopName: string;
 }
 
-// Convert time string to minutes since midnight
+// Helper functions
 function timeToMinutes(timeString: string): number {
   const [hours, minutes] = timeString.split(':').map(Number);
   return hours * 60 + minutes;
 }
 
-// This function handles GTFS times that can exceed 24 hours
 function normalizedTimeToMinutes(timeString: string): number {
   const [hoursStr, minutesStr] = timeString.split(':');
   let hours = parseInt(hoursStr, 10);
@@ -36,47 +40,58 @@ function normalizedTimeToMinutes(timeString: string): number {
 
 /**
  * Server action for finding routes between two stops
- * This moves computation to the server for better performance
+ * This version is optimized to reduce payload size for Vercel
  */
 export async function findRoutes({
+  fromId,
+  toId,
   fromName,
   toName,
   currentTime,
   user,
-  allStops,
-  allTrips,
 }: {
+  fromId?: string;
+  toId?: string;
   fromName: string;
   toName: string;
   currentTime: string;
   user: User | null;
-  allStops: Stop[];
-  allTrips: Trip[];
 }): Promise<{
   routes: RouteResult[];
   error: string | null;
-  todayServiceIds: string[];
 }> {
   try {
-    // 1. Find the stops by name
-    const fromStops = allStops.filter((stop) => stop.name === fromName);
-    const toStops = allStops.filter((stop) => stop.name === toName);
+    // 1. Get stop information - either use provided IDs or look them up by name
+    let fromStops: Stop[] = [];
+    let toStops: Stop[] = [];
 
-    // Handle errors for missing stops
-    if (fromStops.length === 0) {
-      return {
-        routes: [],
-        error: `Could not locate departure stop "${fromName}"`,
-        todayServiceIds: [],
-      };
+    // Instead of getting all stops, just get the ones we need
+    if (fromId) {
+      // If stop ID is provided directly, construct minimal stop object
+      fromStops = [{ stop_id: fromId, name: fromName, lat: 0, lng: 0 }];
+    } else {
+      // Otherwise look up the stop by name (more expensive operation)
+      const matchingStops = await getStopsByName(fromName);
+      if (matchingStops.length === 0) {
+        return {
+          routes: [],
+          error: `Could not locate departure stop "${fromName}"`,
+        };
+      }
+      fromStops = matchingStops;
     }
 
-    if (toStops.length === 0) {
-      return {
-        routes: [],
-        error: `Could not locate arrival stop "${toName}"`,
-        todayServiceIds: [],
-      };
+    if (toId) {
+      toStops = [{ stop_id: toId, name: toName, lat: 0, lng: 0 }];
+    } else {
+      const matchingStops = await getStopsByName(toName);
+      if (matchingStops.length === 0) {
+        return {
+          routes: [],
+          error: `Could not locate arrival stop "${toName}"`,
+        };
+      }
+      toStops = matchingStops;
     }
 
     // 2. Get today's service calendar
@@ -91,7 +106,7 @@ export async function findRoutes({
       validServiceIds = [calendarData.service_id];
     }
 
-    // 3. Fetch stop times for all possible from/to stops
+    // 3. Get stop times directly - no need to pass them from client
     const allFromStopTimes: StopTime[] = [];
     for (const fromStop of fromStops) {
       const stopTimes = await getStopTimes(fromStop.stop_id);
@@ -102,7 +117,6 @@ export async function findRoutes({
       return {
         routes: [],
         error: `No scheduled departures found for stop "${fromName}"`,
-        todayServiceIds: validServiceIds,
       };
     }
 
@@ -116,22 +130,24 @@ export async function findRoutes({
       return {
         routes: [],
         error: `No scheduled arrivals found for stop "${toName}"`,
-        todayServiceIds: validServiceIds,
       };
     }
 
-    // 4. Find routes using the algorithm
+    // 4. Get trips directly from the database based on service IDs
+    const todayTrips = await getTripsForServiceIds(validServiceIds);
+
+    // 5. Find routes using the algorithm - PASS validServiceIds to the algorithm
     const results = findRouteAlgorithm({
       fromStops,
       toStops,
       fromStopTimes: allFromStopTimes,
       toStopTimes: allToStopTimes,
-      trips: allTrips,
+      trips: todayTrips,
       currentTime,
-      validServiceIds,
+      validServiceIds, // Pass the valid service IDs here
     });
 
-    // 5. Save the route to user's history if results were found and user is logged in
+    // 6. Save the route to user's history if results were found and user is logged in
     if (results.length > 0 && user) {
       await setUserRecentRoute(fromName, toName, user);
     }
@@ -142,14 +158,12 @@ export async function findRoutes({
         results.length === 0
           ? 'No direct routes found between these stops in the next 24 hours'
           : null,
-      todayServiceIds: validServiceIds,
     };
   } catch (error) {
     console.error('Error in findRoutes server action:', error);
     return {
       routes: [],
       error: 'Failed to find routes. Please try again later.',
-      todayServiceIds: [],
     };
   }
 }
@@ -164,7 +178,7 @@ function findRouteAlgorithm({
   toStopTimes,
   trips,
   currentTime,
-  validServiceIds,
+  validServiceIds, // Add parameter here to accept validServiceIds
 }: {
   fromStops: Stop[];
   toStops: Stop[];
@@ -172,7 +186,7 @@ function findRouteAlgorithm({
   toStopTimes: StopTime[];
   trips: Trip[];
   currentTime: string;
-  validServiceIds: string[];
+  validServiceIds: string[]; // Add type here
 }): RouteResult[] {
   const results: RouteResult[] = [];
 
@@ -194,7 +208,7 @@ function findRouteAlgorithm({
   );
 
   // Filter trips to only those running today
-  const validServiceIdSet = new Set(validServiceIds);
+  const validServiceIdSet = new Set(validServiceIds); // Now validServiceIds is in scope
   const filteredTrips = trips.filter((trip) =>
     validServiceIdSet.has(trip.service_id),
   );
@@ -204,6 +218,9 @@ function findRouteAlgorithm({
   const validTripIds = new Set(
     [...commonTripIds].filter((id) => todayTripIds.has(id)),
   );
+
+  // Rest of the algorithm remains the same
+  // ...existing code...
 
   // Create maps for lookups
   const tripsInfoMap = new Map<string, Trip>();
@@ -250,6 +267,7 @@ function findRouteAlgorithm({
 
   // Process each valid trip
   validTripIds.forEach((tripId) => {
+    // ...existing processing code...
     const fromTimesForTrip = fromStopTimesByTrip.get(tripId) || [];
     const toTimesForTrip = toStopTimesByTrip.get(tripId) || [];
 

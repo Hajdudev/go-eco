@@ -191,3 +191,42 @@ export async function getShapes(): Promise<ShapePoint[][]> {
   const shapePaths = Object.values(groupedShapes);
   return shapePaths;
 }
+
+// New function to get stops by name directly - export it
+export async function getStopsByName(name: string): Promise<Stop[]> {
+  const { data, error } = await supabase
+    .from('stops')
+    .select('stop_id, stop_name, stop_lat, stop_lon')
+    .eq('stop_name', name);
+
+  if (error) {
+    console.error('Error fetching stops by name:', error);
+    return [];
+  }
+
+  return data.map((stop) => ({
+    stop_id: stop.stop_id,
+    name: stop.stop_name,
+    lat: parseFloat(stop.stop_lat),
+    lng: parseFloat(stop.stop_lon),
+  }));
+}
+
+// New function to get trips by service IDs - export it
+export async function getTripsForServiceIds(
+  serviceIds: string[],
+): Promise<Trip[]> {
+  if (serviceIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*')
+    .in('service_id', serviceIds);
+
+  if (error) {
+    console.error('Error fetching trips by service IDs:', error);
+    return [];
+  }
+
+  return data;
+}

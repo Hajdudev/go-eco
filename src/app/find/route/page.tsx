@@ -144,10 +144,12 @@ function determineArrivalDay(
 }
 
 export default function Page() {
-  const { trips, markers, user } = useAppContext();
+  const { user } = useAppContext(); // We no longer need trips and markers in this component
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const to = searchParams.get('to');
+  const fromId = searchParams.get('fromId'); // Optional stop ID for optimization
+  const toId = searchParams.get('toId'); // Optional stop ID for optimization
   const [loading, setLoading] = useState(true);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -168,22 +170,10 @@ export default function Page() {
     let isMounted = true;
 
     async function fetchRoutes() {
-      if (
-        !from ||
-        !to ||
-        !currentTime ||
-        markers.length === 0 ||
-        trips.length === 0
-      ) {
+      if (!from || !to || !currentTime) {
         if (isMounted) {
           setError(
-            !from || !to
-              ? 'Missing from or to location'
-              : !currentTime
-                ? 'Initializing...'
-                : markers.length === 0
-                  ? 'No stops data available. Please try refreshing the page.'
-                  : 'No trips data available. Please try refreshing the page.',
+            !from || !to ? 'Missing from or to location' : 'Initializing...',
           );
           setLoading(false);
         }
@@ -194,14 +184,14 @@ export default function Page() {
         setLoading(true);
         setLoadingStatus('Finding routes...');
 
-        // Call the server action
+        // Call the server action with minimal data
         const result = await findRoutes({
+          fromId: fromId || undefined,
+          toId: toId || undefined,
           fromName: from,
           toName: to,
           currentTime,
           user,
-          allStops: markers,
-          allTrips: trips,
         });
 
         if (isMounted) {
@@ -223,7 +213,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, currentTime, markers, trips, user]);
+  }, [from, to, fromId, toId, currentTime, user]);
 
   const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
 
