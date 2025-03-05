@@ -1,20 +1,22 @@
 'use client';
 import { useEffect } from 'react';
 import { useAppContext } from './context/AppProvider';
-import { Stop, ShapePoint, Trip } from '@/types/gtfs';
+import { Stop, ShapePoint, Trip, CalendarDate } from '@/types/gtfs';
 
 interface ContextInitializerProps {
   initialStops: Stop[];
   initialShapes: ShapePoint[][];
   initialTrips: Trip[];
+  todayDay: CalendarDate | CalendarDate[];
 }
 
 export function ContextInitializer({
   initialStops,
   initialShapes,
   initialTrips,
+  todayDay,
 }: ContextInitializerProps) {
-  const { setMarkers, setShapes, setTrips } = useAppContext();
+  const { setMarkers, setShapes, setTrips, setTodayDay } = useAppContext();
 
   // Update context with server fetched data
   useEffect(() => {
@@ -27,6 +29,10 @@ export function ContextInitializer({
     if (initialTrips && initialTrips.length > 0) {
       setTrips(initialTrips);
     }
+    if (todayDay) {
+      console.log(todayDay);
+      setTodayDay(todayDay);
+    }
   }, [
     initialStops,
     initialShapes,
@@ -34,6 +40,8 @@ export function ContextInitializer({
     setShapes,
     initialTrips,
     setTrips,
+    setTodayDay,
+    todayDay,
   ]);
 
   return <></>;

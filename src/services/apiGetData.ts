@@ -1,8 +1,34 @@
 'use server';
 import supabase from './supabaseClient';
 
-import { Stop, StopTime, Trip, ShapePoint } from '../types/gtfs';
+import { Stop, StopTime, Trip, ShapePoint, CalendarDate } from '../types/gtfs';
 import { User } from '@/types/session';
+
+export async function getTodayCalendar(): Promise<
+  CalendarDate[] | CalendarDate
+> {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const formattedDate = `${year}-${month}-${day}`;
+  try {
+    const { data, error } = await supabase
+      .from('calendar_dates')
+      .select('service_id, date')
+      .eq('date', formattedDate);
+    if (error) {
+      console.error('Error fetching today calendar:', error);
+      return { service_id: '', date: '' };
+    }
+    return data.length > 0
+      ? data.map((data) => data)
+      : { service_id: '', date: '' };
+  } catch (error) {
+    console.error('Unexpected error in getTodayCalendar:', error);
+    return { service_id: '', date: '' };
+  }
+}
 
 // Fixed function to properly handle user recent routes
 export async function setUserRecentRoute(

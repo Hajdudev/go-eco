@@ -10,9 +10,6 @@ function RecentRoutes() {
   const recentRoutes = user?.recent_rides || [];
   const isLoading = status === 'loading';
 
-  // Calculate placeholder items needed to reach 7 total items
-  const placeholderCount = Math.max(0, 7 - recentRoutes.length);
-
   if (isLoading) {
     return (
       <div>
@@ -32,65 +29,48 @@ function RecentRoutes() {
           // Case when user is logged in but has no recent routes
           <div>
             <div className='bg-slateblack h-1 w-full'></div>
-            <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] md:text-2xl lg:min-h-[450px] lg:pt-24 lg:text-4xl'>
-              <span>You don t have any recent routes...</span>
+            <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px]'>
+              <span>You don t have any recent routes.</span>
+              <Link href='/'>
+                <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-black'>
+                  Find a route
+                </button>
+              </Link>
             </div>
           </div>
         ) : (
           // Case when user has recent routes
-          <div>
-            {/* Render actual routes */}
-            {recentRoutes.map((route, index) => {
-              const parts = route.split(' → ');
-              const from = parts[0];
-              const to = parts[1];
-              const isLastItem =
-                index === recentRoutes.length - 1 && placeholderCount === 0;
+          recentRoutes.map((route, index) => {
+            const isLastItem = index === recentRoutes.length - 1;
+            // Parse the route string to get from/to values
+            const parts = route.split(' → ');
+            const from = parts[0];
+            const to = parts[1];
 
-              return (
-                <div key={`route-${index}`}>
-                  <div className='bg-slateblack h-1 w-full'></div>
-                  <Link
-                    href={`/find/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+            return (
+              <div key={`route-${index}`}>
+                <div className='bg-slateblack h-1 w-full'></div>
+                <Link
+                  href={`/find//route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+                >
+                  <div
+                    className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
                   >
-                    <div
-                      className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
-                    >
-                      {route}
-                    </div>
-                  </Link>
-                </div>
-              );
-            })}
-
-            {/* Render placeholder items to fill space */}
-            {Array(placeholderCount)
-              .fill(0)
-              .map((_, index) => {
-                const isLastPlaceholder = index === placeholderCount - 1;
-
-                return (
-                  <div key={`placeholder-${index}`}>
-                    <div className='bg-slateblack h-1 w-full'></div>
-                    <div
-                      className={`bg-mist p-4 opacity-50 ${isLastPlaceholder ? 'rounded-b-2xl' : ''}`}
-                    >
-                      <div className='h-6'></div>{' '}
-                      {/* Empty space with same height as route text */}
-                    </div>
+                    {route}
                   </div>
-                );
-              })}
-          </div>
+                </Link>
+              </div>
+            );
+          })
         )
       ) : (
         // Case when user is not logged in
         <div>
           <div className='bg-slateblack h-1 w-full'></div>
-          <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] md:text-2xl lg:min-h-[400px] lg:pt-24 lg:text-4xl xl:min-h-[500px]'>
+          <div className='bg-mist flex min-h-[200px] flex-col rounded-b-2xl p-4 text-center font-bold md:min-h-[300px] lg:min-h-[400px] xl:min-h-[500px]'>
             <span>You are not logged in</span>
             <Link href='/auth/signin'>
-              <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-2xl text-black'>
+              <button className='bg-primary hover:bg-opacity-90 mt-4 rounded-md px-4 py-2 text-black'>
                 Sign in
               </button>
             </Link>

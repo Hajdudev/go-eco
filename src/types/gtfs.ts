@@ -58,3 +58,8 @@ export type RoutingResult = {
   start_time: number;
   end_time: number;
 };
+
+export type CalendarDate = {
+  service_id: string;
+  date: string;
+};

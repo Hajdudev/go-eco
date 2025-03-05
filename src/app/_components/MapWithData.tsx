@@ -1,31 +1,16 @@
-import { getShapes, getTrip, getUnfilteredStops } from '@/services/apiGetData';
-import ContextInitializer from '../loadData';
+import { Suspense } from 'react';
 import DynamicMap from '../_components/DynamicMap';
-
+import ContextProvider from './ContextProvider';
 
 async function MapWithData() {
-  const stops = await getUnfilteredStops();
-  const shapesData = await getShapes();
-  const trips = await getTrip();
-
-  const typedShapes = shapesData.map((shape) =>
-    shape.map((point) => ({
-      lat: point.lat,
-      lng: point.lng,
-    })),
-  );
-
   return (
     <>
-      <ContextInitializer
-        initialStops={stops}
-        initialShapes={typedShapes}
-        initialTrips={trips}
-      />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ContextProvider />
+      </Suspense>
       <DynamicMap />
     </>
   );
-  
 }
 
 export default MapWithData;

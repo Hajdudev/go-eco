@@ -1,5 +1,5 @@
 'use client';
-import { Stop, StopTime, Trip } from '@/types/gtfs';
+import { CalendarDate, Stop, StopTime, Trip } from '@/types/gtfs';
 import { User } from '@/types/session';
 
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
@@ -37,6 +37,8 @@ type AppContextType = {
   setIsLoading: (value: boolean) => void;
   user: User | null;
   setUser: (value: User | null) => void;
+  todayDay: CalendarDate | CalendarDate[];
+  setTodayDay: (value: CalendarDate | CalendarDate[]) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -57,6 +59,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [todayDay, setTodayDay] = useState<CalendarDate | CalendarDate[]>({
+    service_id: '',
+    date: '',
+  });
 
   const value = useMemo(
     () => ({
@@ -84,6 +90,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setTrips,
       isLoading,
       setIsLoading,
+      todayDay,
+      setTodayDay,
     }),
     [
       markers,
@@ -98,6 +106,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       trips,
       isLoading,
       user,
+      todayDay,
     ],
   );
 
