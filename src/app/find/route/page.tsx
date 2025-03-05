@@ -522,22 +522,13 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, trips, markers, currentTime, user, findRouteSync]); // Now findRouteSync is correctly included
+  }, [from, to, trips, markers, currentTime, user, findRouteSync]);
 
   const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
 
   return (
     <div className='bg-secondary mt-8 min-h-[550px] w-full rounded-4xl p-6'>
       <div className='mb-4 grid grid-cols-2 gap-4'>
-        {/* <div>
-          <p className='text-lg'>
-            From:{' '}
-            <span className='font-semibold'>{from || 'Not selected'}</span>
-          </p>
-          <p className='text-lg'>
-            To: <span className='font-semibold'>{to || 'Not selected'}</span>
-          </p>
-        </div> */}
         <div className='col-span-full text-center'>
           <div className='grid grid-cols-3 grid-rows-2 rounded-lg bg-white px-4 py-2 shadow'>
             <p className='col-start-1 col-end-3 text-left text-lg'>
