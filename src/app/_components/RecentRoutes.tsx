@@ -10,6 +10,13 @@ function RecentRoutes() {
   const recentRoutes = user?.recent_rides || [];
   const isLoading = status === 'loading';
 
+  // Calculate how many blank slots we need
+  const MAX_ROUTES = 7;
+  const blankSlotsCount = Math.max(0, MAX_ROUTES - recentRoutes.length);
+
+  // Create array of blank slots when needed
+  const blankSlots = Array(blankSlotsCount).fill(null);
+
   if (isLoading) {
     return (
       <div>
@@ -40,28 +47,47 @@ function RecentRoutes() {
           </div>
         ) : (
           // Case when user has recent routes
-          recentRoutes.map((route, index) => {
-            const isLastItem = index === recentRoutes.length - 1;
-            // Parse the route string to get from/to values
-            const parts = route.split(' → ');
-            const from = parts[0];
-            const to = parts[1];
+          <div>
+            {/* Display real routes */}
+            {recentRoutes.map((route, index) => {
+              const isLastItemOverall =
+                index === recentRoutes.length - 1 && blankSlotsCount === 0;
+              const parts = route.split(' → ');
+              const from = parts[0];
+              const to = parts[1];
 
-            return (
-              <div key={`route-${index}`}>
-                <div className='bg-slateblack h-1 w-full'></div>
-                <Link
-                  href={`/find//route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
-                >
-                  <div
-                    className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
+              return (
+                <div key={`route-${index}`}>
+                  <div className='bg-slateblack h-1 w-full'></div>
+                  <Link
+                    href={`/find/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
                   >
-                    {route}
+                    <div
+                      className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItemOverall ? 'rounded-b-2xl' : ''}`}
+                    >
+                      {route}
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+
+            {/* Add blank slots to maintain consistent height */}
+            {blankSlots.map((_, index) => {
+              const isLastBlankSlot = index === blankSlots.length - 1;
+
+              return (
+                <div key={`blank-${index}`}>
+                  <div className='bg-slateblack h-1 w-full'></div>
+                  <div
+                    className={`bg-mist h-[60px] p-4 ${isLastBlankSlot ? 'rounded-b-2xl' : ''}`}
+                  >
+                    {/* Empty slot */}
                   </div>
-                </Link>
-              </div>
-            );
-          })
+                </div>
+              );
+            })}
+          </div>
         )
       ) : (
         // Case when user is not logged in
