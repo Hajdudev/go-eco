@@ -1,28 +1,13 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
-import { Trip, StopTime, Stop } from '@/types/gtfs';
-import { getStopTimes, setUserRecentRoute } from '@/services/apiGetData';
-import { useState, useEffect, JSX, useCallback } from 'react';
+import { useEffect, useState, JSX } from 'react';
+import { findRoutes, RouteResult } from '@/actions/routeActions';
 
-interface RouteResult {
-  tripId: string;
-  tripName?: string;
-  routeName?: string;
-  departureTime: string;
-  arrivalTime: string;
-  fromStopName: string;
-  toStopName: string;
-}
-
-// Move helper functions outside of component to avoid inclusion in dependency arrays
+// Import helper functions for UI display
 function isRouteToday(currentTime: string, departureTime: string): boolean {
   const departureHour = parseInt(departureTime.split(':')[0], 10);
-
-  // If time has hours >= 24, it's always "tomorrow" or later
-  if (departureHour >= 24) {
-    return false;
-  }
+  if (departureHour >= 24) return false;
 
   const currentMinutes = timeToMinutes(currentTime);
   const departureMinutes = timeToMinutes(departureTime);
@@ -30,6 +15,7 @@ function isRouteToday(currentTime: string, departureTime: string): boolean {
   return departureMinutes >= currentMinutes;
 }
 
+// Other helper functions
 function getWaitTime(currentTime: string, departureTime: string): string {
   let waitMinutes;
   const departureHour = parseInt(departureTime.split(':')[0], 10);
@@ -71,19 +57,14 @@ function getWaitTime(currentTime: string, departureTime: string): string {
   }
 }
 
-// Format time for display, normalizing hours > 24 to 0-23 range
 function formatTimeDisplay(timeString: string): string {
   const parts = timeString.split(':');
   let hours = parseInt(parts[0], 10);
   const minutes = parts[1];
-
-  // Normalize hours to 0-23 range for display
   hours = hours % 24;
-
   return `${hours.toString().padStart(2, '0')}:${minutes}`;
 }
 
-// Original formatTime function keeps original GTFS format but just trims seconds
 function formatTime(timeString: string): string {
   return timeString.substring(0, 5);
 }
@@ -107,22 +88,8 @@ function calculateDuration(startTime: string, endTime: string): string {
   }
 }
 
-// Convert time string to minutes since midnight
 function timeToMinutes(timeString: string): number {
   const [hours, minutes] = timeString.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-// This function handles GTFS times that can exceed 24 hours
-// It normalizes them to standard 0-23 hour format for comparisons
-function normalizedTimeToMinutes(timeString: string): number {
-  const [hoursStr, minutesStr] = timeString.split(':');
-  let hours = parseInt(hoursStr, 10);
-  const minutes = parseInt(minutesStr, 10);
-
-  // Normalize hours to 0-23 range for comparison
-  hours = hours % 24;
-
   return hours * 60 + minutes;
 }
 
@@ -177,7 +144,7 @@ function determineArrivalDay(
 }
 
 export default function Page() {
-  const { trips, markers, user, todayDay } = useAppContext();
+  const { trips, markers, user } = useAppContext();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const to = searchParams.get('to');
@@ -187,7 +154,7 @@ export default function Page() {
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
   const [currentTime, setCurrentTime] = useState<string>('');
 
-  // Get and format current time when component loads
+  // Get current time when component loads
   useEffect(() => {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -196,320 +163,54 @@ export default function Page() {
     setCurrentTime(`${hours}:${minutes}:${seconds}`);
   }, []);
 
-  // Move findRouteSync inside useCallback to properly handle it in dependencies
-  const findRouteSync = useCallback(
-    ({
-      fromStops,
-      toStops,
-      fromStopTimes,
-      toStopTimes,
-      trips,
-      currentTime,
-    }: {
-      fromStops: Stop[];
-      toStops: Stop[];
-      fromStopTimes: StopTime[];
-      toStopTimes: StopTime[];
-      trips: Trip[];
-      currentTime: string;
-    }): RouteResult[] => {
-      const results: RouteResult[] = [];
-
-      // Create a set of from stop IDs and to stop IDs for quick lookup
-      const fromStopIds = new Set(fromStops.map((stop) => stop.stop_id));
-      const toStopIds = new Set(toStops.map((stop) => stop.stop_id));
-
-      // First create an index of all trip IDs that might connect our stops
-      const fromTripIds = new Set(fromStopTimes.map((st) => st.trip_id));
-      const toTripIds = new Set(toStopTimes.map((st) => st.trip_id));
-
-      // Find trips that visit both from and to stops
-      const commonTripIds = new Set(
-        [...fromTripIds].filter((id) => toTripIds.has(id)),
-      );
-
-      // Create maps for faster lookups
-      const tripsInfoMap = new Map<string, Trip>();
-      const stopNamesMap = new Map<string, string>();
-
-      // Create a filtered map of trips based on today's service_id
-      let filteredInfoMap = new Set<Trip>();
-
-      // Filter trips based on today's service_id(s)
-      if (Array.isArray(todayDay) && todayDay.length > 0) {
-        // Create a set of valid service_ids
-        const validServiceIds = new Set(
-          todayDay.map((day) => day.service_id).filter(Boolean),
-        );
-
-        // Filter trips by valid service_ids
-        filteredInfoMap = new Set(
-          trips.filter((trip) => validServiceIds.has(trip.service_id)),
-        );
-      } else if (!Array.isArray(todayDay) && todayDay.service_id) {
-        // Filter by a single service_id
-        filteredInfoMap = new Set(
-          trips.filter((trip) => trip.service_id === todayDay.service_id),
-        );
-      } else {
-        // Fallback: use all trips if no valid service_ids
-        filteredInfoMap = new Set(trips);
-      }
-
-      // Create a set of trip IDs for today's service
-      const todayTripIds = new Set(
-        [...filteredInfoMap].map((trip) => trip.trip_id),
-      );
-
-      // Further filter common trip IDs to only include those running today
-      const validCommonTripIds = new Set(
-        [...commonTripIds].filter((id) => todayTripIds.has(id)),
-      );
-
-      // Store all trips in the tripsInfoMap for reference
-      trips.forEach((trip) => {
-        tripsInfoMap.set(trip.trip_id, trip);
-      });
-
-      // Build a map of stop IDs to stop names
-      fromStops.forEach((stop) => {
-        stopNamesMap.set(stop.stop_id, stop.name);
-      });
-      toStops.forEach((stop) => {
-        stopNamesMap.set(stop.stop_id, stop.name);
-      });
-
-      // Group and index stop times by trip_id
-      const fromStopTimesByTrip = new Map<string, StopTime[]>();
-      const toStopTimesByTrip = new Map<string, StopTime[]>();
-
-      // Only process common trips that are running today
-      fromStopTimes.forEach((stopTime) => {
-        if (
-          validCommonTripIds.has(stopTime.trip_id) && // Using filtered trip IDs
-          fromStopIds.has(stopTime.stop_id)
-        ) {
-          if (!fromStopTimesByTrip.has(stopTime.trip_id)) {
-            fromStopTimesByTrip.set(stopTime.trip_id, []);
-          }
-          fromStopTimesByTrip.get(stopTime.trip_id)?.push(stopTime);
-        }
-      });
-
-      toStopTimes.forEach((stopTime) => {
-        if (
-          validCommonTripIds.has(stopTime.trip_id) && // Using filtered trip IDs
-          toStopIds.has(stopTime.stop_id)
-        ) {
-          if (!toStopTimesByTrip.has(stopTime.trip_id)) {
-            toStopTimesByTrip.set(stopTime.trip_id, []);
-          }
-          toStopTimesByTrip.get(stopTime.trip_id)?.push(stopTime);
-        }
-      });
-
-      // Process each common trip that is running today
-      validCommonTripIds.forEach((tripId) => {
-        const fromTimesForTrip = fromStopTimesByTrip.get(tripId) || [];
-        const toTimesForTrip = toStopTimesByTrip.get(tripId) || [];
-
-        // Skip if we don't have both departure and arrival data
-        if (fromTimesForTrip.length === 0 || toTimesForTrip.length === 0) {
-          return;
-        }
-
-        // For each departure and arrival on this trip
-        for (const fromStopTime of fromTimesForTrip) {
-          for (const toStopTime of toTimesForTrip) {
-            // Rest of the trip processing logic...
-            if (
-              Number(fromStopTime.stop_sequence) >=
-              Number(toStopTime.stop_sequence)
-            ) {
-              continue;
-            }
-
-            // Time handling logic...
-            const departureMinutes = normalizedTimeToMinutes(
-              fromStopTime.departure_time,
-            );
-            const currentNormalizedMinutes = timeToMinutes(currentTime);
-            const windowEnd = currentNormalizedMinutes + 24 * 60;
-
-            if (
-              (departureMinutes >= currentNormalizedMinutes &&
-                departureMinutes <= windowEnd) ||
-              (departureMinutes + 24 * 60 >= currentNormalizedMinutes &&
-                departureMinutes + 24 * 60 <= windowEnd)
-            ) {
-              const tripInfo = tripsInfoMap.get(tripId);
-
-              results.push({
-                tripId: tripId,
-                tripName: tripInfo?.trip_headsign || 'Unknown',
-                routeName: tripInfo?.route_id || 'Unknown',
-                departureTime: fromStopTime.departure_time,
-                arrivalTime: toStopTime.arrival_time,
-                fromStopName:
-                  stopNamesMap.get(fromStopTime.stop_id) ||
-                  fromStopTime.stop_id,
-                toStopName:
-                  stopNamesMap.get(toStopTime.stop_id) || toStopTime.stop_id,
-              });
-            }
-          }
-        }
-      });
-
-      // Sort by departure time
-      return results.sort((a, b) => {
-        const aDepartureMinutes = normalizedTimeToMinutes(a.departureTime);
-        const bDepartureMinutes = normalizedTimeToMinutes(b.departureTime);
-        const currentNormalizedMinutes = timeToMinutes(currentTime);
-
-        let adjustedA = aDepartureMinutes;
-        let adjustedB = bDepartureMinutes;
-
-        if (adjustedA < currentNormalizedMinutes) adjustedA += 24 * 60;
-        if (adjustedB < currentNormalizedMinutes) adjustedB += 24 * 60;
-
-        return adjustedA - adjustedB;
-      });
-    },
-    [todayDay],
-  ); // Only todayDay needs to be in the dependency array
-
+  // Use the server action to find routes
   useEffect(() => {
     let isMounted = true;
 
-    async function loadRoutes() {
-      if (!from || !to) {
+    async function fetchRoutes() {
+      if (
+        !from ||
+        !to ||
+        !currentTime ||
+        markers.length === 0 ||
+        trips.length === 0
+      ) {
         if (isMounted) {
-          setError('Missing from or to location');
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (!currentTime) {
-        // Wait for current time to be set
-        return;
-      }
-
-      if (markers.length === 0) {
-        if (isMounted) {
-          setError('No stops data available. Please try refreshing the page.');
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (trips.length === 0) {
-        if (isMounted) {
-          setError('No trips data available. Please try refreshing the page.');
+          setError(
+            !from || !to
+              ? 'Missing from or to location'
+              : !currentTime
+                ? 'Initializing...'
+                : markers.length === 0
+                  ? 'No stops data available. Please try refreshing the page.'
+                  : 'No trips data available. Please try refreshing the page.',
+          );
           setLoading(false);
         }
         return;
       }
 
       try {
-        if (isMounted) setLoading(true);
+        setLoading(true);
+        setLoadingStatus('Finding routes...');
 
-        // Find the stops by name
-        if (isMounted) setLoadingStatus('Finding stops...');
-        // Get all possible stops with the given names (handling duplicates)
-        const fromStops = markers.filter((stop) => stop.name === from);
-        const toStops = markers.filter((stop) => stop.name === to);
+        // Call the server action
+        const result = await findRoutes({
+          fromName: from,
+          toName: to,
+          currentTime,
+          user,
+          allStops: markers,
+          allTrips: trips,
+        });
 
-        if (fromStops.length === 0) {
-          if (isMounted) {
-            setError(`Could not locate departure stop "${from}"`);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (toStops.length === 0) {
-          if (isMounted) {
-            setError(`Could not locate arrival stop "${to}"`);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Get stop times for all possible stops
-        if (isMounted) setLoadingStatus('Fetching departure times...');
-
-        // Fetch stop times for all possible from stops
-        const allFromStopTimes: StopTime[] = [];
-        for (const fromStop of fromStops) {
-          if (isMounted)
-            setLoadingStatus(
-              `Fetching times for ${fromStop.name} (${fromStop.stop_id})...`,
-            );
-          const stopTimes = await getStopTimes(fromStop.stop_id);
-          allFromStopTimes.push(...stopTimes);
-        }
-
-        if (allFromStopTimes.length === 0) {
-          if (isMounted) {
-            setError(`No scheduled departures found for stop "${from}"`);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (isMounted) setLoadingStatus('Fetching arrival times...');
-
-        // Fetch stop times for all possible to stops
-        const allToStopTimes: StopTime[] = [];
-        for (const toStop of toStops) {
-          if (isMounted)
-            setLoadingStatus(
-              `Fetching times for ${toStop.name} (${toStop.stop_id})...`,
-            );
-          const stopTimes = await getStopTimes(toStop.stop_id);
-          allToStopTimes.push(...stopTimes);
-        }
-
-        if (allToStopTimes.length === 0) {
-          if (isMounted) {
-            setError(`No scheduled arrivals found for stop "${to}"`);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (isMounted) setLoadingStatus('Finding routes...');
-        // Process in batches to avoid UI freezing
-        setTimeout(() => {
-          if (!isMounted) return;
-
-          const results = findRouteSync({
-            fromStops,
-            toStops,
-            fromStopTimes: allFromStopTimes,
-            toStopTimes: allToStopTimes,
-            trips,
-            currentTime,
-          });
-
-          if (results.length === 0) {
-            setError(
-              'No direct routes found between these stops in the next 24 hours',
-            );
-          } else {
-            setError(null);
-            if (from && to && user) {
-              setUserRecentRoute(from, to, user);
-            }
-          }
-
-          setRoutes(results);
-
+        if (isMounted) {
+          setRoutes(result.routes);
+          setError(result.error);
           setLoading(false);
-        }, 10);
-      } catch {
+        }
+      } catch (err) {
+        console.error('Error finding routes:', err);
         if (isMounted) {
           setError('Failed to find routes. Please try again later.');
           setLoading(false);
@@ -517,12 +218,12 @@ export default function Page() {
       }
     }
 
-    loadRoutes();
+    fetchRoutes();
 
     return () => {
       isMounted = false;
     };
-  }, [from, to, trips, markers, currentTime, user, findRouteSync]);
+  }, [from, to, currentTime, markers, trips, user]);
 
   const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
 
@@ -537,14 +238,12 @@ export default function Page() {
                 {from || 'Not selected'}
               </span>
             </p>
-
             <p className='col-start-1 col-end-3 text-left text-lg'>
               <span>To:</span>
               <span className='pl-4 font-semibold'>{to || 'Not selected'}</span>
             </p>
-            {/* <p className='text-xs text-gray-500'>Time Window</p> */}
             <p className='col-start-3 col-end-3 row-start-1 text-gray-500'>
-              Current time :
+              Current time:
             </p>
             <p className='col-start-3 col-end-3 row-start-2 text-xl font-bold text-blue-600'>
               {formattedCurrentTime}
@@ -577,6 +276,7 @@ export default function Page() {
                 key={index}
                 className='border-b border-gray-100 p-4 transition-colors hover:bg-blue-50'
               >
+                {/* Route UI - same as before */}
                 <div className='mb-2 flex items-center justify-between'>
                   <div className='flex items-center'>
                     <span className='font-medium'>{route.tripName}</span>
