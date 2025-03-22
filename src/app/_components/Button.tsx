@@ -23,6 +23,7 @@ type ButtonProps = {
   value: string | number;
   text: string;
   className?: string;
+  disabled?: boolean;
 } & VariantProps<typeof ButtonStyles>;
 
 export function Button({
@@ -32,12 +33,14 @@ export function Button({
   color,
   size,
   className,
+  disabled,
 }: ButtonProps) {
   return (
     <button
       className={ButtonStyles({ color, size, className })}
       onClick={onClick}
       value={value}
+      disabled={disabled}
     >
       {text}
     </button>

@@ -2,14 +2,14 @@
 
 import { useSession } from 'next-auth/react';
 import { useAppContext } from './context/AppProvider';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from '@/types/session';
 import { getUserData } from '@/services/apiGetData';
 
 export default function SessionSync() {
   const { data: session, status } = useSession();
   const { setUser } = useAppContext();
- 
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch the user's data from the database when session changes
   useEffect(() => {
@@ -19,6 +19,7 @@ export default function SessionSync() {
       }
 
       try {
+        setIsLoading(true);
         // Get extended user data from database
         const userDataFromDB = await getUserData(session.user.email);
 
@@ -46,7 +47,9 @@ export default function SessionSync() {
             recent_rides: [],
           });
         }
-      } 
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     fetchUserData();

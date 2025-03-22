@@ -5,6 +5,7 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { useAppContext } from '../context/AppProvider';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 type MarkerType = {
   lat: number;
@@ -59,7 +60,8 @@ const SearchForm = () => {
     setActiveSuggestionPosition(null);
     setActiveInput(null);
   };
-
+  const { status } = useSession();
+  const isLoading = status === 'loading';
   return (
     <form>
       <div className='flex flex-col items-center justify-center gap-5'>
@@ -79,9 +81,24 @@ const SearchForm = () => {
           onFocus={handleFocus('to')}
           onBlur={handleBlur}
         />
-        <Link href={`/find/route?from=${fromValue}&to=${toValue}`}>
-          <Button text='Search a route' color='primary' value='search' />
-        </Link>
+        {isLoading ? (
+          <Button
+            className='hover:scale-50'
+            text='loading...'
+            color='primary'
+            value='search'
+          />
+        ) : (
+          <Link href={`/find/route?from=${fromValue}&to=${toValue}`}>
+            <Button
+              className='transition-all duration-100 hover:scale-110'
+              text='Search a route'
+              color='primary'
+              value='search'
+            />
+          </Link>
+        )}
+
         {showSuggestions && activeSuggestionPosition && (
           <div
             className='bg-secondary scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary absolute z-50 max-h-40 w-67 overflow-y-auto rounded-xl p-4 font-bold shadow-lg'

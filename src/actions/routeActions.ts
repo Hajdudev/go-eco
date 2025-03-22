@@ -1,12 +1,7 @@
 'use server';
 
 import { Trip, StopTime, Stop } from '@/types/gtfs';
-import {
-  getStopTimes,
-  getTodayCalendar,
-  getStopsByName,
-  getTripsForServiceIds,
-} from '@/services/apiGetData';
+import { getStopTimes, getStopsByName } from '@/services/apiGetData';
 import { User } from '@/types/session';
 import { setUserRecentRoute } from '@/services/apiGetData';
 
@@ -49,6 +44,7 @@ export async function findRoutes({
   toName,
   currentTime,
   user,
+  trips,
 }: {
   fromId?: string;
   toId?: string;
@@ -56,6 +52,7 @@ export async function findRoutes({
   toName: string;
   currentTime: string;
   user: User | null;
+  trips: Trip[]; // Accept trips from client instead of fetching based on service_ids
 }): Promise<{
   routes: RouteResult[];
   error: string | null;
@@ -94,19 +91,7 @@ export async function findRoutes({
       toStops = matchingStops;
     }
 
-    // 2. Get today's service calendar
-    const calendarData = await getTodayCalendar();
-    let validServiceIds: string[] = [];
-
-    if (Array.isArray(calendarData)) {
-      validServiceIds = calendarData
-        .map((day) => day.service_id)
-        .filter(Boolean) as string[];
-    } else if (calendarData.service_id) {
-      validServiceIds = [calendarData.service_id];
-    }
-
-    // 3. Get stop times directly - no need to pass them from client
+    // 2. Get stop times directly - no need to pass them from client
     const allFromStopTimes: StopTime[] = [];
     for (const fromStop of fromStops) {
       const stopTimes = await getStopTimes(fromStop.stop_id);
@@ -133,21 +118,17 @@ export async function findRoutes({
       };
     }
 
-    // 4. Get trips directly from the database based on service IDs
-    const todayTrips = await getTripsForServiceIds(validServiceIds);
-
-    // 5. Find routes using the algorithm - PASS validServiceIds to the algorithm
+    // 3. Find routes using the algorithm - without calendar filtering
     const results = findRouteAlgorithm({
       fromStops,
       toStops,
       fromStopTimes: allFromStopTimes,
       toStopTimes: allToStopTimes,
-      trips: todayTrips,
+      trips,
       currentTime,
-      validServiceIds, // Pass the valid service IDs here
     });
 
-    // 6. Save the route to user's history if results were found and user is logged in
+    // 4. Save the route to user's history if results were found and user is logged in
     if (results.length > 0 && user) {
       await setUserRecentRoute(fromName, toName, user);
     }
@@ -170,6 +151,7 @@ export async function findRoutes({
 
 /**
  * The core route finding algorithm, extracted to its own function
+ * Removed calendar filtering - uses all trips
  */
 function findRouteAlgorithm({
   fromStops,
@@ -178,7 +160,6 @@ function findRouteAlgorithm({
   toStopTimes,
   trips,
   currentTime,
-  validServiceIds, // Add parameter here to accept validServiceIds
 }: {
   fromStops: Stop[];
   toStops: Stop[];
@@ -186,7 +167,6 @@ function findRouteAlgorithm({
   toStopTimes: StopTime[];
   trips: Trip[];
   currentTime: string;
-  validServiceIds: string[]; // Add type here
 }): RouteResult[] {
   const results: RouteResult[] = [];
 
@@ -207,27 +187,12 @@ function findRouteAlgorithm({
     [...fromTripIds].filter((id) => toTripIds.has(id)),
   );
 
-  // Filter trips to only those running today
-  const validServiceIdSet = new Set(validServiceIds); // Now validServiceIds is in scope
-  const filteredTrips = trips.filter((trip) =>
-    validServiceIdSet.has(trip.service_id),
-  );
-  const todayTripIds = new Set(filteredTrips.map((trip) => trip.trip_id));
-
-  // Find the intersection of common trips and today's trips
-  const validTripIds = new Set(
-    [...commonTripIds].filter((id) => todayTripIds.has(id)),
-  );
-
-  // Rest of the algorithm remains the same
-  // ...existing code...
-
   // Create maps for lookups
   const tripsInfoMap = new Map<string, Trip>();
   const stopNamesMap = new Map<string, string>();
 
-  // Build lookup maps
-  filteredTrips.forEach((trip) => {
+  // Build lookup maps for all trips - no filtering based on calendar
+  trips.forEach((trip) => {
     tripsInfoMap.set(trip.trip_id, trip);
   });
 
@@ -243,10 +208,10 @@ function findRouteAlgorithm({
   const fromStopTimesByTrip = new Map<string, StopTime[]>();
   const toStopTimesByTrip = new Map<string, StopTime[]>();
 
-  // Only process stops from valid trips
+  // Process all common trips without filtering by service_id
   fromStopTimes.forEach((stopTime) => {
     if (
-      validTripIds.has(stopTime.trip_id) &&
+      commonTripIds.has(stopTime.trip_id) &&
       fromStopIds.has(stopTime.stop_id)
     ) {
       if (!fromStopTimesByTrip.has(stopTime.trip_id)) {
@@ -257,7 +222,10 @@ function findRouteAlgorithm({
   });
 
   toStopTimes.forEach((stopTime) => {
-    if (validTripIds.has(stopTime.trip_id) && toStopIds.has(stopTime.stop_id)) {
+    if (
+      commonTripIds.has(stopTime.trip_id) &&
+      toStopIds.has(stopTime.stop_id)
+    ) {
       if (!toStopTimesByTrip.has(stopTime.trip_id)) {
         toStopTimesByTrip.set(stopTime.trip_id, []);
       }
@@ -265,9 +233,8 @@ function findRouteAlgorithm({
     }
   });
 
-  // Process each valid trip
-  validTripIds.forEach((tripId) => {
-    // ...existing processing code...
+  // Process each common trip
+  commonTripIds.forEach((tripId) => {
     const fromTimesForTrip = fromStopTimesByTrip.get(tripId) || [];
     const toTimesForTrip = toStopTimesByTrip.get(tripId) || [];
 

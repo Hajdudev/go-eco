@@ -144,7 +144,7 @@ function determineArrivalDay(
 }
 
 export default function Page() {
-  const { user } = useAppContext(); // We no longer need trips and markers in this component
+  const { user, trips } = useAppContext(); // Now we need trips again
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const to = searchParams.get('to');
@@ -170,10 +170,14 @@ export default function Page() {
     let isMounted = true;
 
     async function fetchRoutes() {
-      if (!from || !to || !currentTime) {
+      if (!from || !to || !currentTime || trips.length === 0) {
         if (isMounted) {
           setError(
-            !from || !to ? 'Missing from or to location' : 'Initializing...',
+            !from || !to
+              ? 'Missing from or to location'
+              : !currentTime
+                ? 'Initializing...'
+                : 'No trips data available. Please try refreshing the page.',
           );
           setLoading(false);
         }
@@ -184,7 +188,7 @@ export default function Page() {
         setLoading(true);
         setLoadingStatus('Finding routes...');
 
-        // Call the server action with minimal data
+        // Call the server action with minimal data, but include trips
         const result = await findRoutes({
           fromId: fromId || undefined,
           toId: toId || undefined,
@@ -192,6 +196,7 @@ export default function Page() {
           toName: to,
           currentTime,
           user,
+          trips, // Pass trips from context
         });
 
         if (isMounted) {
@@ -213,7 +218,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [from, to, fromId, toId, currentTime, user]);
+  }, [from, to, fromId, toId, currentTime, user, trips]);
 
   const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
 
