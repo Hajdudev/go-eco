@@ -3,12 +3,28 @@
 import Link from 'next/link';
 import { useAppContext } from '../context/AppProvider';
 import { useSession } from 'next-auth/react';
+import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 function RecentRoutes() {
   const { user } = useAppContext();
   const { status } = useSession();
   const isLoading = status === 'loading';
   const recentRoutes = user?.recent_rides || [];
+  const router = useRouter();
+
+  // Use callback to handle route click to force navigation even for same route
+  const handleRouteClick = useCallback(
+    (from: string, to: string, e: React.MouseEvent) => {
+      e.preventDefault();
+      // Add a timestamp parameter to force a new navigation even if the route is the same
+      const timestamp = Date.now();
+      router.push(
+        `/find/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&_=${timestamp}`,
+      );
+    },
+    [router],
+  );
 
   if (isLoading) {
     return (
@@ -50,15 +66,12 @@ function RecentRoutes() {
             return (
               <div key={`route-${index}`}>
                 <div className='bg-slateblack h-1 w-full'></div>
-                <Link
-                  href={`/find/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+                <div
+                  className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
+                  onClick={(e) => handleRouteClick(from, to, e)}
                 >
-                  <div
-                    className={`bg-mist cursor-pointer p-4 font-bold hover:bg-gray-200 ${isLastItem ? 'rounded-b-2xl' : ''}`}
-                  >
-                    {route}
-                  </div>
-                </Link>
+                  {route}
+                </div>
               </div>
             );
           })
