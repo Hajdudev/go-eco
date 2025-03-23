@@ -56,5 +56,5 @@ export default function SessionSync() {
     }
   }, [session, status, setUser]);
 
-  return null; // This component doesn't render anything visible
+  return null; // This component doesn't render anything vi
 }
