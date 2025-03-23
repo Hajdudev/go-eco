@@ -29,6 +29,57 @@ async function executeSupabaseQuery(queryFn, retries = 3, delay = 1000) {
   throw lastError;
 }
 
+/**
+ * Helper function to fetch paginated data to prevent large response sizes
+ * @param {Function} queryBuilder - The Supabase query builder function
+ * @param {number} pageSize - Number of records per page
+ * @param {number} maxRecords - Maximum total records to fetch (optional)
+ * @returns {Promise<Array>} Combined data from all pages
+ */
+async function fetchPaginatedData(
+  queryBuilder,
+  pageSize = 100,
+  maxRecords = 1000,
+) {
+  let allData = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore && (maxRecords ? allData.length < maxRecords : true)) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error } = await executeSupabaseQuery(() =>
+      queryBuilder.range(from, to),
+    );
+
+    if (error) {
+      console.error('Pagination query error:', error);
+      break;
+    }
+
+    if (data.length === 0) {
+      hasMore = false;
+    } else {
+      allData = [...allData, ...data];
+      page++;
+
+      // Safety check to prevent infinite loops
+      if (data.length < pageSize) {
+        hasMore = false;
+      }
+
+      // If we've reached maximum records, truncate and stop
+      if (maxRecords && allData.length >= maxRecords) {
+        allData = allData.slice(0, maxRecords);
+        hasMore = false;
+      }
+    }
+  }
+
+  return allData;
+}
+
 export async function getTodayCalendar() {
   const today = new Date();
   const year = today.getFullYear();
@@ -167,14 +218,12 @@ export async function getUserData(email) {
  */
 export async function getUnfilteredStops() {
   try {
-    const { data, error } = await executeSupabaseQuery(() =>
-      supabase.from('stops').select('*'),
+    // Use pagination to prevent large response size
+    const data = await fetchPaginatedData(
+      supabase.from('stops').select('stop_id, stop_name, stop_lat, stop_lon'),
+      200, // Fetch 200 records per page
+      2000, // Maximum 2000 stops (adjust as needed)
     );
-
-    if (error) {
-      console.error('Error fetching stops:', error);
-      return [];
-    }
 
     // Map all stops without filtering duplicates
     const stops = data.map((stop) => ({
@@ -198,11 +247,16 @@ export async function getUnfilteredStops() {
  */
 export async function getStopTimes(stop_id) {
   try {
-    const { data, error } = await executeSupabaseQuery(() =>
-      supabase
-        .from('stop_times')
-        .select('trip_id, stop_id, arrival_time, departure_time, stop_sequence')
-        .eq('stop_id', stop_id),
+    // Limit the number of stop times returned
+    const { data, error } = await executeSupabaseQuery(
+      () =>
+        supabase
+          .from('stop_times')
+          .select(
+            'trip_id, stop_id, arrival_time, departure_time, stop_sequence',
+          )
+          .eq('stop_id', stop_id)
+          .limit(500), // Limit to 500 results
     );
 
     if (error) {
@@ -222,14 +276,13 @@ export async function getStopTimes(stop_id) {
  */
 export async function getTrip() {
   try {
-    const { data, error } = await executeSupabaseQuery(() =>
+    // Use pagination to avoid large response payload
+    const data = await fetchPaginatedData(
       supabase.from('trips').select('*'),
+      200, // 200 per page
+      1000, // Max 1000 trips
     );
 
-    if (error) {
-      console.error('Error fetching trips:', error);
-      return [];
-    }
     return data;
   } catch (error) {
     console.error('Failed to get trips after retries:', error);
@@ -243,27 +296,54 @@ export async function getTrip() {
  */
 export async function getShapes() {
   try {
-    const { data, error } = await executeSupabaseQuery(() =>
-      supabase.from('shapes').select('*'),
+    // Get only specific shape IDs instead of all shapes
+    // This significantly reduces the response size
+    const { data: shapeIds, error: shapeIdsError } = await executeSupabaseQuery(
+      () =>
+        supabase
+          .from('shapes')
+          .select('shape_id')
+          .order('shape_id', { ascending: true })
+          .limit(50), // Limit to 50 unique shape IDs
     );
 
-    if (error) {
-      console.error('Error fetching shapes:', error);
+    if (shapeIdsError) {
+      console.error('Error fetching shape IDs:', shapeIdsError);
       return [];
     }
 
-    // Group shapes by shape_id
-    const groupedShapes = data.reduce((acc, shape) => {
-      const shapeId = shape.shape_id;
-      if (!acc[shapeId]) {
-        acc[shapeId] = [];
+    // Get unique shape IDs
+    const uniqueShapeIds = [...new Set(shapeIds.map((item) => item.shape_id))];
+
+    // Create an empty result object
+    const groupedShapes = {};
+
+    // Fetch shapes for each shape ID separately
+    for (const shapeId of uniqueShapeIds) {
+      const { data: shapePoints, error: shapePointsError } =
+        await executeSupabaseQuery(
+          () =>
+            supabase
+              .from('shapes')
+              .select('shape_pt_lat, shape_pt_lon')
+              .eq('shape_id', shapeId)
+              .order('shape_pt_sequence', { ascending: true })
+              .limit(500), // Limit points per shape
+        );
+
+      if (shapePointsError) {
+        console.error(
+          `Error fetching points for shape ${shapeId}:`,
+          shapePointsError,
+        );
+        continue;
       }
-      acc[shapeId].push({
+
+      groupedShapes[shapeId] = shapePoints.map((shape) => ({
         lat: parseFloat(shape.shape_pt_lat),
         lng: parseFloat(shape.shape_pt_lon),
-      });
-      return acc;
-    }, {});
+      }));
+    }
 
     // Convert to array of shape paths
     const shapePaths = Object.values(groupedShapes);
