@@ -192,8 +192,24 @@ export async function getActiveServiceIds() {
 }
 
 export async function getTodayCalendar() {
-  // Use the more comprehensive getActiveServiceIds function instead
-  return getActiveServiceIds();
+  // Convert the return type to match CalendarDate | CalendarDate[]
+  const serviceIds = await getActiveServiceIds();
+
+  if (serviceIds.length === 0) {
+    return { service_id: '', date: '' }; // Return a single empty CalendarDate
+  }
+
+  // Return format that matches CalendarDate[]
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const formattedDate = `${year}-${month}-${day}`;
+
+  return serviceIds.map((service_id) => ({
+    service_id,
+    date: formattedDate,
+  }));
 }
 
 /**

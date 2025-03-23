@@ -62,4 +62,8 @@ export type RoutingResult = {
 export type CalendarDate = {
   service_id: string;
   date: string;
+  exception_type?: number;
 };
+
+// Add a new type for active service IDs
+export type ActiveServiceIds = string[];
