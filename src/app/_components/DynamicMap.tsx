@@ -18,7 +18,7 @@ export function Map() {
   });
 
   if (loadError) return <div>Error loading maps</div>;
-  if (!isLoaded) return <div>Loading Maps</div>;
+  if (!isLoaded) return <LoadingSpinner />;
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <GoogleMap

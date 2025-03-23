@@ -3,6 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
 import { useEffect, useState, JSX } from 'react';
 import { findRoutes, RouteResult } from '@/actions/routeActions';
+import InitialModal from '@/app/_components/InitialModal';
 
 // Import helper functions for UI display
 function isRouteToday(currentTime: string, departureTime: string): boolean {
@@ -223,136 +224,141 @@ export default function Page() {
   const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
 
   return (
-    <div className='bg-secondary mt-8 min-h-[550px] w-full rounded-4xl p-6'>
-      <div className='mb-4 grid grid-cols-2 gap-4'>
-        <div className='col-span-full text-center'>
-          <div className='grid grid-cols-3 grid-rows-2 rounded-lg bg-white px-4 py-2 shadow'>
-            <p className='col-start-1 col-end-3 text-left text-lg'>
-              <span>From:</span>
-              <span className='pl-4 font-semibold'>
-                {from || 'Not selected'}
-              </span>
-            </p>
-            <p className='col-start-1 col-end-3 text-left text-lg'>
-              <span>To:</span>
-              <span className='pl-4 font-semibold'>{to || 'Not selected'}</span>
-            </p>
-            <p className='col-start-3 col-end-3 row-start-1 text-gray-500'>
-              Current time:
-            </p>
-            <p className='col-start-3 col-end-3 row-start-2 text-xl font-bold text-blue-600'>
-              {formattedCurrentTime}
-            </p>
+    <>
+      <InitialModal />
+      <div className='bg-secondary mt-8 min-h-[550px] w-full rounded-4xl p-6'>
+        <div className='mb-4 grid grid-cols-2 gap-4'>
+          <div className='col-span-full text-center'>
+            <div className='grid grid-cols-3 grid-rows-2 rounded-lg bg-white px-4 py-2 shadow'>
+              <p className='col-start-1 col-end-3 text-left text-lg'>
+                <span>From:</span>
+                <span className='pl-4 font-semibold'>
+                  {from || 'Not selected'}
+                </span>
+              </p>
+              <p className='col-start-1 col-end-3 text-left text-lg'>
+                <span>To:</span>
+                <span className='pl-4 font-semibold'>
+                  {to || 'Not selected'}
+                </span>
+              </p>
+              <p className='col-start-3 col-end-3 row-start-1 text-gray-500'>
+                Current time:
+              </p>
+              <p className='col-start-3 col-end-3 row-start-2 text-xl font-bold text-blue-600'>
+                {formattedCurrentTime}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {loading ? (
-        <div className='flex h-64 flex-col items-center justify-center'>
-          <div className='border-primary mb-4 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2'></div>
-          <p className='text-gray-600'>{loadingStatus}</p>
-          <p className='mt-2 text-sm text-gray-500'>
-            This might take a moment...
-          </p>
-        </div>
-      ) : error ? (
-        <div className='rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700'>
-          <p>{error}</p>
-        </div>
-      ) : routes.length === 0 ? (
-        <div className='rounded border border-yellow-400 bg-yellow-100 px-4 py-3 text-yellow-700'>
-          <p>No routes found in the next 24 hours between these locations.</p>
-        </div>
-      ) : (
-        <div>
-          <div className='max-h-[450px] overflow-y-auto rounded-lg bg-white shadow-lg'>
-            {routes.map((route, index) => (
-              <div
-                key={index}
-                className='border-b border-gray-100 p-4 transition-colors hover:bg-blue-50'
-              >
-                {/* Route UI - same as before */}
-                <div className='mb-2 flex items-center justify-between'>
-                  <div className='flex items-center'>
-                    <span className='font-medium'>{route.tripName}</span>
-                  </div>
-                  <div className='flex items-center'>
-                    {isRouteToday(currentTime, route.departureTime) ? (
-                      <span className='mr-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800'>
-                        Today
-                      </span>
-                    ) : (
-                      <span className='mr-3 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800'>
-                        Tomorrow
-                      </span>
-                    )}
-                    <div className='text-sm text-gray-500'>
-                      {getWaitTime(currentTime, route.departureTime)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className='grid grid-cols-2 gap-4'>
-                  <div className='border-r border-gray-100 pr-4'>
-                    <p className='text-xs text-gray-500'>Departure</p>
+        {loading ? (
+          <div className='flex h-64 flex-col items-center justify-center'>
+            <div className='border-primary mb-4 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2'></div>
+            <p className='text-gray-600'>{loadingStatus}</p>
+            <p className='mt-2 text-sm text-gray-500'>
+              This might take a moment...
+            </p>
+          </div>
+        ) : error ? (
+          <div className='rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700'>
+            <p>{error}</p>
+          </div>
+        ) : routes.length === 0 ? (
+          <div className='rounded border border-yellow-400 bg-yellow-100 px-4 py-3 text-yellow-700'>
+            <p>No routes found in the next 24 hours between these locations.</p>
+          </div>
+        ) : (
+          <div>
+            <div className='max-h-[450px] overflow-y-auto rounded-lg bg-white shadow-lg'>
+              {routes.map((route, index) => (
+                <div
+                  key={index}
+                  className='border-b border-gray-100 p-4 transition-colors hover:bg-blue-50'
+                >
+                  {/* Route UI - same as before */}
+                  <div className='mb-2 flex items-center justify-between'>
                     <div className='flex items-center'>
-                      <p className='font-bold text-blue-600'>
-                        {formatTimeDisplay(route.departureTime)}
-                      </p>
-                      {!isRouteToday(currentTime, route.departureTime) && (
-                        <span className='ml-2 text-xs text-orange-600'>
-                          (next day)
+                      <span className='font-medium'>{route.tripName}</span>
+                    </div>
+                    <div className='flex items-center'>
+                      {isRouteToday(currentTime, route.departureTime) ? (
+                        <span className='mr-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800'>
+                          Today
+                        </span>
+                      ) : (
+                        <span className='mr-3 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800'>
+                          Tomorrow
                         </span>
                       )}
+                      <div className='text-sm text-gray-500'>
+                        {getWaitTime(currentTime, route.departureTime)}
+                      </div>
                     </div>
-                    <p>{route.fromStopName}</p>
                   </div>
-                  <div>
-                    <p className='text-xs text-gray-500'>Arrival</p>
-                    <div className='flex items-center'>
-                      <p className='font-bold text-green-600'>
-                        {formatTimeDisplay(route.arrivalTime)}
-                      </p>
-                      {determineArrivalDay(
-                        currentTime,
-                        route.departureTime,
-                        route.arrivalTime,
-                      )}
-                    </div>
-                    <p>{route.toStopName}</p>
-                  </div>
-                </div>
 
-                <div className='mt-2 text-sm text-gray-600'>
-                  <div className='flex items-center'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      className='mr-1 h-4 w-4 text-gray-500'
-                      fill='none'
-                      viewBox='0 0 24 24'
-                      stroke='currentColor'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-                      />
-                    </svg>
-                    <p>
-                      Duration:{' '}
-                      {calculateDuration(
-                        route.departureTime,
-                        route.arrivalTime,
-                      )}
-                    </p>
+                  <div className='grid grid-cols-2 gap-4'>
+                    <div className='border-r border-gray-100 pr-4'>
+                      <p className='text-xs text-gray-500'>Departure</p>
+                      <div className='flex items-center'>
+                        <p className='font-bold text-blue-600'>
+                          {formatTimeDisplay(route.departureTime)}
+                        </p>
+                        {!isRouteToday(currentTime, route.departureTime) && (
+                          <span className='ml-2 text-xs text-orange-600'>
+                            (next day)
+                          </span>
+                        )}
+                      </div>
+                      <p>{route.fromStopName}</p>
+                    </div>
+                    <div>
+                      <p className='text-xs text-gray-500'>Arrival</p>
+                      <div className='flex items-center'>
+                        <p className='font-bold text-green-600'>
+                          {formatTimeDisplay(route.arrivalTime)}
+                        </p>
+                        {determineArrivalDay(
+                          currentTime,
+                          route.departureTime,
+                          route.arrivalTime,
+                        )}
+                      </div>
+                      <p>{route.toStopName}</p>
+                    </div>
+                  </div>
+
+                  <div className='mt-2 text-sm text-gray-600'>
+                    <div className='flex items-center'>
+                      <svg
+                        xmlns='http://www.w3.org/2000/svg'
+                        className='mr-1 h-4 w-4 text-gray-500'
+                        fill='none'
+                        viewBox='0 0 24 24'
+                        stroke='currentColor'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <p>
+                        Duration:{' '}
+                        {calculateDuration(
+                          route.departureTime,
+                          route.arrivalTime,
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }

@@ -30,7 +30,6 @@ export function ContextInitializer({
       setTrips(initialTrips);
     }
     if (todayDay) {
-      console.log(todayDay);
       setTodayDay(todayDay);
     }
   }, [
