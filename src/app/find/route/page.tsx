@@ -5,7 +5,7 @@ import { useEffect, useState, JSX } from 'react';
 import { findRoutes } from '@/actions/routeActions';
 import InitialModal from '@/app/_components/InitialModal';
 
-// Define RouteResult interface since it's no longer imported from the JS file
+// Define RouteResult interface with the new properties
 interface RouteResult {
   tripId: string;
   tripName: string;
@@ -15,12 +15,19 @@ interface RouteResult {
   toStopName: string;
   departureTime: string;
   arrivalTime: string;
+  serviceId?: string;
+  departureDayOffset?: number;
+  arrivalDayOffset?: number;
 }
 
 // Import helper functions for UI display
-function isRouteToday(currentTime: string, departureTime: string): boolean {
-  const departureHour = parseInt(departureTime.split(':')[0], 10);
-  if (departureHour >= 24) return false;
+function isRouteToday(
+  currentTime: string,
+  departureTime: string,
+  departureDayOffset?: number,
+): boolean {
+  // Consider the day offset - a day offset > 0 means the trip is on a future day
+  if (departureDayOffset && departureDayOffset > 0) return false;
 
   const currentMinutes = timeToMinutes(currentTime);
   const departureMinutes = timeToMinutes(departureTime);
@@ -71,11 +78,13 @@ function getWaitTime(currentTime: string, departureTime: string): string {
 }
 
 function formatTimeDisplay(timeString: string): string {
+  // Simple approach: just split by colon and take first two parts
   const parts = timeString.split(':');
-  let hours = parseInt(parts[0], 10);
-  const minutes = parts[1];
-  hours = hours % 24;
-  return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  const hours = parseInt(parts[0], 10) % 24; // Normalize hours to 0-23 range
+  const minutes = parts[1]; // Keep minutes exactly as is
+
+  // Return without any additional processing
+  return `${hours}:${minutes}`;
 }
 
 function formatTime(timeString: string): string {
@@ -110,8 +119,24 @@ function determineArrivalDay(
   currentTime: string,
   departureTime: string,
   arrivalTime: string,
+  departureDayOffset?: number,
+  arrivalDayOffset?: number,
 ): JSX.Element | null {
-  // Extract hours to check if any time is on a future day (hours >= 24)
+  // If we have explicit day offsets from the GTFS data
+  if (departureDayOffset !== undefined && arrivalDayOffset !== undefined) {
+    const dayDifference = arrivalDayOffset - departureDayOffset;
+
+    if (dayDifference > 0) {
+      return (
+        <span className='ml-2 text-xs text-orange-600'>
+          {dayDifference === 1 ? '(next day)' : `(+${dayDifference} days)`}
+        </span>
+      );
+    }
+    return null;
+  }
+
+  // Fallback to the old logic for compatibility
   const departureHour = parseInt(departureTime.split(':')[0], 10);
   const arrivalHour = parseInt(arrivalTime.split(':')[0], 10);
 
@@ -128,11 +153,6 @@ function determineArrivalDay(
     }
 
     // Normal "next day" case
-    return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
-  }
-
-  // If arrival hour is 24+, it's explicitly the next day
-  if (arrivalHour >= 24) {
     return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
   }
 
@@ -294,7 +314,7 @@ export default function Page() {
                   key={index}
                   className='border-b border-gray-100 p-4 transition-colors hover:bg-blue-50'
                 >
-                  {/* Route UI - same as before */}
+                  {/* Route UI with updated calendar-based display */}
                   <div className='mb-2 flex items-center justify-between'>
                     <div className='flex items-center'>
                       <span className='font-medium'>
@@ -304,9 +324,20 @@ export default function Page() {
                       </span>
                     </div>
                     <div className='flex items-center'>
-                      {isRouteToday(currentTime, route.departureTime) ? (
+                      {isRouteToday(
+                        currentTime,
+                        route.departureTime,
+                        route.departureDayOffset,
+                      ) ? (
                         <span className='mr-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800'>
                           Today
+                        </span>
+                      ) : route.departureDayOffset &&
+                        route.departureDayOffset > 0 ? (
+                        <span className='mr-3 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800'>
+                          {route.departureDayOffset === 1
+                            ? 'Tomorrow'
+                            : `+${route.departureDayOffset} days`}
                         </span>
                       ) : (
                         <span className='mr-3 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800'>
@@ -322,15 +353,27 @@ export default function Page() {
                   <div className='grid grid-cols-2 gap-4'>
                     <div className='border-r border-gray-100 pr-4'>
                       <p className='text-xs text-gray-500'>Departure</p>
+                      {/* Fix the problematic div by ensuring no extra text nodes */}
                       <div className='flex items-center'>
                         <p className='font-bold text-blue-600'>
                           {formatTimeDisplay(route.departureTime)}
                         </p>
-                        {!isRouteToday(currentTime, route.departureTime) && (
-                          <span className='ml-2 text-xs text-orange-600'>
-                            (next day)
-                          </span>
-                        )}
+                        {/* Use a fragment to avoid any potential React quirks with conditional rendering */}
+                        <>
+                          {route.departureDayOffset &&
+                          route.departureDayOffset > 0 ? (
+                            <span className='ml-2 text-xs text-orange-600'>
+                              {route.departureDayOffset === 1
+                                ? '(next day)'
+                                : `(+${route.departureDayOffset} days)`}
+                            </span>
+                          ) : !route.departureDayOffset &&
+                            !isRouteToday(currentTime, route.departureTime) ? (
+                            <span className='ml-2 text-xs text-orange-600'>
+                              (next day)
+                            </span>
+                          ) : null}
+                        </>
                       </div>
                       <p>{route.fromStopName}</p>
                     </div>
@@ -344,6 +387,8 @@ export default function Page() {
                           currentTime,
                           route.departureTime,
                           route.arrivalTime,
+                          route.departureDayOffset,
+                          route.arrivalDayOffset,
                         )}
                       </div>
                       <p>{route.toStopName}</p>

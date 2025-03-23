@@ -5,15 +5,39 @@ import {
   getStopTimes,
   getBatchTripDetails,
   setUserRecentRoute,
+  getActiveServiceIds,
 } from '@/services/apiGetData';
 import * as cache from '@/lib/cache';
+
+/**
+ * Helper function to normalize GTFS time to standard 24-hour time
+ * @param {string} gtfsTime - GTFS time string (may have hours > 24)
+ * @returns {object} Object with normalized time and day offset
+ */
+function normalizeGtfsTime(gtfsTime) {
+  const [hours, minutes, seconds] = gtfsTime.split(':').map(Number);
+  const dayOffset = Math.floor(hours / 24);
+  const normalizedHours = hours % 24;
+
+  return {
+    time: `${normalizedHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds ? seconds.toString().padStart(2, '0') : '00'}`,
+    dayOffset,
+  };
+}
 
 export async function findRoutes(params) {
   try {
     const { fromId, toId, fromName, toName, currentTime, user } = params;
 
+    // Parse current time
+    const [currentHour, currentMinute] = currentTime.split(':').map(Number);
+
     // Cache key for the route search - including the time for accuracy
-    const cacheKey = `route:${fromId || fromName}:${toId || toName}:${currentTime.split(':')[0]}`;
+    // Include the current date to ensure routes are for the current service day
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const cacheKey = `route:${fromId || fromName}:${toId || toName}:${currentTime.split(':')[0]}:${dateString}`;
+
     const cachedRoutes = cache.get(cacheKey);
 
     // Return cached route results if available
@@ -31,6 +55,16 @@ export async function findRoutes(params) {
     // If we have the user, save this as a recent route
     if (user) {
       await setUserRecentRoute(fromName, toName, user);
+    }
+
+    // Get active service IDs for today to filter relevant trips
+    const activeServiceIds = await getActiveServiceIds();
+
+    if (!activeServiceIds || activeServiceIds.length === 0) {
+      return {
+        routes: [],
+        error: 'No active transit service available for today.',
+      };
     }
 
     // Step 1: Get stop IDs if not provided
@@ -68,11 +102,7 @@ export async function findRoutes(params) {
 
     // Step 3: Find matching trips
     const possibleRoutes = [];
-    const processedTrips = new Set();
     const tripsToFetch = new Set();
-
-    // Convert current time to minutes for comparison
-    const [currentHour, currentMinute] = currentTime.split(':').map(Number);
     const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
     // Find matching trips
@@ -86,7 +116,11 @@ export async function findRoutes(params) {
           // Add trip ID to the fetch list
           tripsToFetch.add(fromStop.trip_id);
 
-          // Create a route result object
+          // Normalize GTFS times (which can have hours > 24)
+          const departureInfo = normalizeGtfsTime(fromStop.departure_time);
+          const arrivalInfo = normalizeGtfsTime(toStop.arrival_time);
+
+          // Create a route result object with normalized time and day offset information
           possibleRoutes.push({
             tripId: fromStop.trip_id,
             tripName: 'Loading...', // Placeholder to be filled later
@@ -100,10 +134,9 @@ export async function findRoutes(params) {
               'Unknown Stop',
             departureTime: fromStop.departure_time,
             arrivalTime: toStop.arrival_time,
+            departureDayOffset: departureInfo.dayOffset,
+            arrivalDayOffset: arrivalInfo.dayOffset,
           });
-
-          // Mark this trip as processed
-          processedTrips.add(fromStop.trip_id);
         }
       }
     }
@@ -115,7 +148,7 @@ export async function findRoutes(params) {
       };
     }
 
-    // Step 4: Get trip details for all the trips we found
+    // Step 4: Get trip details including service_id to filter by active service
     const tripDetails = await getBatchTripDetails(Array.from(tripsToFetch));
     const tripDetailsMap = new Map();
 
@@ -126,30 +159,54 @@ export async function findRoutes(params) {
       }
     }
 
-    // Add trip names to routes
-    const routesWithNames = possibleRoutes.map((route) => {
-      const tripDetail = tripDetailsMap.get(route.tripId);
-      return {
-        ...route,
-        tripName:
-          tripDetail?.trip_name ||
-          tripDetail?.trip_headsign ||
-          tripDetail?.route_id ||
-          'Unknown Route',
-      };
-    });
+    // Add trip names to routes and filter by active service
+    const routesWithNames = possibleRoutes
+      .filter((route) => {
+        const tripDetail = tripDetailsMap.get(route.tripId);
+        // Only include trips that have active service today
+        return tripDetail && activeServiceIds.includes(tripDetail.service_id);
+      })
+      .map((route) => {
+        const tripDetail = tripDetailsMap.get(route.tripId);
+        return {
+          ...route,
+          tripName:
+            tripDetail?.trip_name ||
+            tripDetail?.trip_headsign ||
+            tripDetail?.route_id ||
+            'Unknown Route',
+          serviceId: tripDetail?.service_id,
+        };
+      });
 
-    // Sort by departure time, considering time wrapping at midnight
+    // Sort by departure time, considering time wrapping at midnight and day offsets
     routesWithNames.sort((a, b) => {
       // Convert departure times to minutes for comparison
-      let timeA = convertTimeToMinutes(a.departureTime);
-      let timeB = convertTimeToMinutes(b.departureTime);
+      const timeA =
+        convertTimeToMinutes(a.departureTime) +
+        (a.departureDayOffset || 0) * 24 * 60;
+      const timeB =
+        convertTimeToMinutes(b.departureTime) +
+        (b.departureDayOffset || 0) * 24 * 60;
 
-      // Adjust for times that are after the current time
-      if (timeA < currentTimeInMinutes) timeA += 24 * 60;
-      if (timeB < currentTimeInMinutes) timeB += 24 * 60;
+      // Calculate minutes from current time considering day boundaries
+      const minutesFromNowA = timeA - currentTimeInMinutes;
+      const minutesFromNowB = timeB - currentTimeInMinutes;
 
-      return timeA - timeB;
+      // First show trips that depart soon (consider trips that depart within the next 24 hours first)
+      if (minutesFromNowA >= 0 && minutesFromNowB >= 0) {
+        return timeA - timeB;
+      }
+      // If one is upcoming and one is past, prioritize upcoming
+      else if (minutesFromNowA >= 0 && minutesFromNowB < 0) {
+        return -1;
+      } else if (minutesFromNowA < 0 && minutesFromNowB >= 0) {
+        return 1;
+      }
+      // Both are past, sort by closest to current time
+      else {
+        return timeB - timeA;
+      }
     });
 
     const result = {
@@ -157,9 +214,8 @@ export async function findRoutes(params) {
       error: null,
     };
 
-    // Cache the route results for a moderate time (changes with current time)
-    // Uses default cache time (1 hour)
-    cache.set(cacheKey, result);
+    // Cache the route results until end of day
+    cache.set(cacheKey, result, 'calendarData');
 
     return result;
   } catch (error) {

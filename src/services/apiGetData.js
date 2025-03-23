@@ -96,43 +96,104 @@ async function fetchPaginatedData(
   return allData;
 }
 
-export async function getTodayCalendar() {
+/**
+ * Get active service IDs for the current day
+ * @returns {Promise<string[]>} Array of active service IDs
+ */
+export async function getActiveServiceIds() {
   const today = new Date();
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   const formattedDate = `${year}-${month}-${day}`;
 
-  // Use cache with a shorter TTL since this is specific to today
-  const cacheKey = `calendar_dates:${formattedDate}`;
+  // Get day of week (0=Sunday, 6=Saturday)
+  const dayOfWeek = today.getDay();
+  const dayNames = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
+  const dayColumn = dayNames[dayOfWeek];
+
+  // Use cache with calendar-specific TTL
+  const cacheKey = `service_ids:active:${formattedDate}`;
   const cachedData = cache.get(cacheKey);
   if (cachedData) {
     return cachedData;
   }
 
   try {
-    const { data, error } = await executeSupabaseQuery(() =>
-      supabase
-        .from('calendar_dates')
-        .select('service_id, date')
-        .eq('date', formattedDate),
-    );
+    // First check calendar_dates for exceptions (added or removed service)
+    const { data: exceptionData, error: exceptionError } =
+      await executeSupabaseQuery(() =>
+        supabase
+          .from('calendar_dates')
+          .select('service_id, exception_type')
+          .eq('date', formattedDate),
+      );
 
-    if (error) {
-      console.error('Error fetching today calendar:', error);
-      return { service_id: '', date: '' };
+    if (exceptionError) {
+      console.error('Error fetching calendar date exceptions:', exceptionError);
     }
 
-    const result =
-      data.length > 0 ? data.map((data) => data) : { service_id: '', date: '' };
+    // Then get the regular calendar entries
+    const { data: calendarData, error: calendarError } =
+      await executeSupabaseQuery(() =>
+        supabase
+          .from('calendar')
+          .select('service_id')
+          .eq(dayColumn, 1)
+          .lte('start_date', formattedDate)
+          .gte('end_date', formattedDate),
+      );
 
-    // Cache for 15 minutes (dynamicData) since it's date-specific
-    cache.set(cacheKey, result, 'dynamicData');
-    return result;
+    if (calendarError) {
+      console.error('Error fetching calendar data:', calendarError);
+    }
+
+    // Process exceptions and regular service
+    const addedServices = exceptionData
+      ? exceptionData
+          .filter((item) => item.exception_type === 1)
+          .map((item) => item.service_id)
+      : [];
+
+    const removedServices = exceptionData
+      ? exceptionData
+          .filter((item) => item.exception_type === 2)
+          .map((item) => item.service_id)
+      : [];
+
+    const regularServices = calendarData
+      ? calendarData.map((item) => item.service_id)
+      : [];
+
+    // Combine regular and exception services
+    const activeServiceIds = [
+      ...regularServices.filter((id) => !removedServices.includes(id)),
+      ...addedServices,
+    ];
+
+    // Remove duplicates
+    const uniqueServiceIds = [...new Set(activeServiceIds)];
+
+    // Cache until the end of the day
+    cache.set(cacheKey, uniqueServiceIds, 'calendarData');
+    return uniqueServiceIds;
   } catch (error) {
-    console.error('Unexpected error in getTodayCalendar:', error);
-    return { service_id: '', date: '' };
+    console.error('Unexpected error in getActiveServiceIds:', error);
+    return [];
   }
+}
+
+export async function getTodayCalendar() {
+  // Use the more comprehensive getActiveServiceIds function instead
+  return getActiveServiceIds();
 }
 
 /**

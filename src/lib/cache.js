@@ -11,6 +11,23 @@ const CACHE_CONFIG = {
   staticData: {
     ttl: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
   },
+  // Calendar data - cache until the end of the current day
+  calendarData: {
+    // Calculate TTL to end of current day
+    ttl: () => {
+      const now = new Date();
+      const endOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999,
+      );
+      return endOfDay.getTime() - now.getTime();
+    },
+  },
   // Dynamic data (like current service calendar) - shorter cache time
   dynamicData: {
     ttl: 15 * 60 * 1000, // 15 minutes in milliseconds
@@ -25,17 +42,19 @@ const CACHE_CONFIG = {
  * Set a value in the cache
  * @param {string} key - The cache key
  * @param {any} value - The value to cache
- * @param {string} type - The cache type (staticData, dynamicData, default)
+ * @param {string} type - The cache type (staticData, dynamicData, calendarData, default)
  */
 export function set(key, value, type = 'default') {
   const config = CACHE_CONFIG[type] || CACHE_CONFIG.default;
-  const expiresAt = Date.now() + config.ttl;
+  const ttl = typeof config.ttl === 'function' ? config.ttl() : config.ttl;
+  const expiresAt = Date.now() + ttl;
 
   cacheStore.set(key, {
     value,
     expiresAt,
   });
-}
+
+ 
 
 /**
  * Get a value from the cache
@@ -56,10 +75,6 @@ export function get(key) {
     return null;
   }
 
-  // Log cache hit in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Cache] Hit: ${key}`);
-  }
 
   return cachedItem.value;
 }
