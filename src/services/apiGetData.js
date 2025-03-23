@@ -1,10 +1,13 @@
 'use server';
 import supabase from './supabaseClient';
 
-import { Stop, StopTime, Trip, ShapePoint, CalendarDate } from '../types/gtfs';
-import { User } from '@/types/session';
-
-// Helper function to handle Supabase query errors with retries
+/**
+ * Helper function to handle Supabase query errors with retries
+ * @param {Function} queryFn - The query function to execute
+ * @param {number} retries - Number of retries (default: 3)
+ * @param {number} delay - Delay between retries in ms (default: 1000)
+ * @returns {Promise<{data: any, error: any}>} The query result
+ */
 async function executeSupabaseQuery(queryFn, retries = 3, delay = 1000) {
   let lastError;
 
@@ -26,9 +29,7 @@ async function executeSupabaseQuery(queryFn, retries = 3, delay = 1000) {
   throw lastError;
 }
 
-export async function getTodayCalendar(): Promise<
-  CalendarDate[] | CalendarDate
-> {
+export async function getTodayCalendar() {
   const today = new Date();
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -57,12 +58,13 @@ export async function getTodayCalendar(): Promise<
   }
 }
 
-// Fixed function to properly handle user recent routes
-export async function setUserRecentRoute(
-  from: string,
-  to: string,
-  user: User | null,
-) {
+/**
+ * Function to save a user's recent route
+ * @param {string} from - Origin location name
+ * @param {string} to - Destination location name
+ * @param {User|null} user - The user object
+ */
+export async function setUserRecentRoute(from, to, user) {
   // Check if user exists - don't proceed if no user
   if (!user || !user.email) {
     console.error(
@@ -136,7 +138,12 @@ export async function setUserRecentRoute(
   }
 }
 
-export async function getUserData(email: string): Promise<User | null> {
+/**
+ * Function to get user data by email
+ * @param {string} email - User's email
+ * @returns {Promise<User|null>} User data or null
+ */
+export async function getUserData(email) {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase.from('users').select('*').eq('email', email).single(),
@@ -154,7 +161,11 @@ export async function getUserData(email: string): Promise<User | null> {
   }
 }
 
-export async function getUnfilteredStops(): Promise<Stop[]> {
+/**
+ * Get all stops without filtering
+ * @returns {Promise<Stop[]>} Array of stops
+ */
+export async function getUnfilteredStops() {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase.from('stops').select('*'),
@@ -180,7 +191,12 @@ export async function getUnfilteredStops(): Promise<Stop[]> {
   }
 }
 
-export async function getStopTimes(stop_id: string): Promise<StopTime[]> {
+/**
+ * Get stop times for a specific stop
+ * @param {string} stop_id - The stop ID
+ * @returns {Promise<StopTime[]>} Array of stop times
+ */
+export async function getStopTimes(stop_id) {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
@@ -200,7 +216,11 @@ export async function getStopTimes(stop_id: string): Promise<StopTime[]> {
   }
 }
 
-export async function getTrip(): Promise<Trip[]> {
+/**
+ * Get all trips
+ * @returns {Promise<Trip[]>} Array of trips
+ */
+export async function getTrip() {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase.from('trips').select('*'),
@@ -217,7 +237,11 @@ export async function getTrip(): Promise<Trip[]> {
   }
 }
 
-export async function getShapes(): Promise<ShapePoint[][]> {
+/**
+ * Get all shape points grouped by shape_id
+ * @returns {Promise<ShapePoint[][]>} Array of shape point arrays
+ */
+export async function getShapes() {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase.from('shapes').select('*'),
@@ -229,20 +253,17 @@ export async function getShapes(): Promise<ShapePoint[][]> {
     }
 
     // Group shapes by shape_id
-    const groupedShapes: { [key: string]: ShapePoint[] } = data.reduce(
-      (acc, shape) => {
-        const shapeId = shape.shape_id;
-        if (!acc[shapeId]) {
-          acc[shapeId] = [];
-        }
-        acc[shapeId].push({
-          lat: parseFloat(shape.shape_pt_lat),
-          lng: parseFloat(shape.shape_pt_lon),
-        });
-        return acc;
-      },
-      {},
-    );
+    const groupedShapes = data.reduce((acc, shape) => {
+      const shapeId = shape.shape_id;
+      if (!acc[shapeId]) {
+        acc[shapeId] = [];
+      }
+      acc[shapeId].push({
+        lat: parseFloat(shape.shape_pt_lat),
+        lng: parseFloat(shape.shape_pt_lon),
+      });
+      return acc;
+    }, {});
 
     // Convert to array of shape paths
     const shapePaths = Object.values(groupedShapes);
@@ -253,8 +274,12 @@ export async function getShapes(): Promise<ShapePoint[][]> {
   }
 }
 
-// New function to get stops by name directly - export it
-export async function getStopsByName(name: string): Promise<Stop[]> {
+/**
+ * Get stops by name
+ * @param {string} name - The stop name to search for
+ * @returns {Promise<Stop[]>} Array of matching stops
+ */
+export async function getStopsByName(name) {
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
@@ -280,10 +305,12 @@ export async function getStopsByName(name: string): Promise<Stop[]> {
   }
 }
 
-// New function to get trips by service IDs - export it
-export async function getTripsForServiceIds(
-  serviceIds: string[],
-): Promise<Trip[]> {
+/**
+ * Get trips by service IDs
+ * @param {string[]} serviceIds - Array of service IDs
+ * @returns {Promise<Trip[]>} Array of matching trips
+ */
+export async function getTripsForServiceIds(serviceIds) {
   if (serviceIds.length === 0) return [];
 
   try {
