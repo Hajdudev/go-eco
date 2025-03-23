@@ -2,8 +2,20 @@
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
 import { useEffect, useState, JSX } from 'react';
-import { findRoutes, RouteResult } from '@/actions/routeActions';
+import { findRoutes } from '@/actions/routeActions';
 import InitialModal from '@/app/_components/InitialModal';
+
+// Define RouteResult interface since it's no longer imported from the JS file
+interface RouteResult {
+  tripId: string;
+  tripName: string;
+  fromStopId: string;
+  fromStopName: string;
+  toStopId: string;
+  toStopName: string;
+  departureTime: string;
+  arrivalTime: string;
+}
 
 // Import helper functions for UI display
 function isRouteToday(currentTime: string, departureTime: string): boolean {
@@ -171,7 +183,13 @@ export default function Page() {
     let isMounted = true;
 
     async function fetchRoutes() {
-      if (!from || !to || !currentTime || trips.length === 0) {
+      if (
+        !from ||
+        !to ||
+        !currentTime ||
+        !Array.isArray(trips) ||
+        trips.length === 0
+      ) {
         if (isMounted) {
           setError(
             !from || !to
@@ -279,7 +297,11 @@ export default function Page() {
                   {/* Route UI - same as before */}
                   <div className='mb-2 flex items-center justify-between'>
                     <div className='flex items-center'>
-                      <span className='font-medium'>{route.tripName}</span>
+                      <span className='font-medium'>
+                        {route.tripName && route.tripName !== 'Unknown Route'
+                          ? route.tripName
+                          : `Route to ${route.toStopName}`}
+                      </span>
                     </div>
                     <div className='flex items-center'>
                       {isRouteToday(currentTime, route.departureTime) ? (

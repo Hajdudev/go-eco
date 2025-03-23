@@ -27,7 +27,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/services/apiGetData.js"
+    "src/services/apiGetData.js",
+    "src/actions/routeActions.js"
   ],
   "exclude": ["node_modules"]
 }

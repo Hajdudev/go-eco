@@ -44,36 +44,51 @@ async function fetchPaginatedData(
   let allData = [];
   let page = 0;
   let hasMore = true;
+  let consecutiveEmptyResponses = 0;
 
   while (hasMore && (maxRecords ? allData.length < maxRecords : true)) {
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await executeSupabaseQuery(() =>
-      queryBuilder.range(from, to),
-    );
+    try {
+      const { data, error } = await executeSupabaseQuery(() =>
+        queryBuilder.range(from, to),
+      );
 
-    if (error) {
-      console.error('Pagination query error:', error);
-      break;
-    }
+      if (error) {
+        console.error('Pagination query error:', error);
+        break;
+      }
 
-    if (data.length === 0) {
+      if (!data || data.length === 0) {
+        consecutiveEmptyResponses++;
+        if (consecutiveEmptyResponses >= 2) {
+          // If we get two empty responses in a row, assume we're done
+          hasMore = false;
+        } else {
+          // Try one more page in case there's a gap in the data
+          page++;
+          continue;
+        }
+      } else {
+        consecutiveEmptyResponses = 0;
+        allData = [...allData, ...data];
+        page++;
+
+        // Safety check to prevent infinite loops
+        if (data.length < pageSize) {
+          hasMore = false;
+        }
+
+        // If we've reached maximum records, truncate and stop
+        if (maxRecords && allData.length >= maxRecords) {
+          allData = allData.slice(0, maxRecords);
+          hasMore = false;
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching page ${page}:`, error);
       hasMore = false;
-    } else {
-      allData = [...allData, ...data];
-      page++;
-
-      // Safety check to prevent infinite loops
-      if (data.length < pageSize) {
-        hasMore = false;
-      }
-
-      // If we've reached maximum records, truncate and stop
-      if (maxRecords && allData.length >= maxRecords) {
-        allData = allData.slice(0, maxRecords);
-        hasMore = false;
-      }
     }
   }
 
@@ -218,11 +233,11 @@ export async function getUserData(email) {
  */
 export async function getUnfilteredStops() {
   try {
-    // Use pagination to prevent large response size
+    // Use pagination to prevent large response size, but ensure we get the complete stop data
     const data = await fetchPaginatedData(
       supabase.from('stops').select('stop_id, stop_name, stop_lat, stop_lon'),
-      200, // Fetch 200 records per page
-      2000, // Maximum 2000 stops (adjust as needed)
+      300, // Increased page size for better coverage
+      3000, // Increased maximum stops to ensure we get all important ones
     );
 
     // Map all stops without filtering duplicates
@@ -232,6 +247,13 @@ export async function getUnfilteredStops() {
       lat: parseFloat(stop.stop_lat),
       lng: parseFloat(stop.stop_lon),
     }));
+
+    // If we're filtering too much, let's ensure at least the main stops are included
+    if (stops.length < 100) {
+      console.warn(
+        'Unusually small number of stops retrieved, consider adjusting limits',
+      );
+    }
 
     return stops;
   } catch (error) {
@@ -355,12 +377,13 @@ export async function getShapes() {
 }
 
 /**
- * Get stops by name
+ * Get stops by name, with improved error handling and fallback search
  * @param {string} name - The stop name to search for
  * @returns {Promise<Stop[]>} Array of matching stops
  */
 export async function getStopsByName(name) {
   try {
+    // First try exact match
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
         .from('stops')
@@ -371,6 +394,33 @@ export async function getStopsByName(name) {
     if (error) {
       console.error('Error fetching stops by name:', error);
       return [];
+    }
+
+    // If no results with exact match, try a more flexible search
+    if (data.length === 0) {
+      const { data: fuzzyData, error: fuzzyError } = await executeSupabaseQuery(
+        () =>
+          supabase
+            .from('stops')
+            .select('stop_id, stop_name, stop_lat, stop_lon')
+            .ilike('stop_name', `%${name}%`)
+            .limit(5),
+      );
+
+      if (fuzzyError) {
+        console.error('Error in fuzzy stop search:', fuzzyError);
+        return [];
+      }
+
+      if (fuzzyData.length > 0) {
+        console.log(`No exact match for "${name}", using fuzzy match instead`);
+        return fuzzyData.map((stop) => ({
+          stop_id: stop.stop_id,
+          name: stop.stop_name,
+          lat: parseFloat(stop.stop_lat),
+          lng: parseFloat(stop.stop_lon),
+        }));
+      }
     }
 
     return data.map((stop) => ({
@@ -407,5 +457,133 @@ export async function getTripsForServiceIds(serviceIds) {
   } catch (error) {
     console.error('Failed to get trips for service IDs after retries:', error);
     return [];
+  }
+}
+
+/**
+ * Get trip details with route information
+ * @param {string} tripId - The trip ID
+ * @returns {Promise<object|null>} Trip details or null if not found
+ */
+export async function getTripDetails(tripId) {
+  try {
+    const { data, error } = await executeSupabaseQuery(() =>
+      supabase
+        .from('trips')
+        .select('*, routes(route_id, route_short_name, route_long_name)')
+        .eq('trip_id', tripId)
+        .single(),
+    );
+
+    if (error) {
+      console.error('Error fetching trip details:', error);
+      return null;
+    }
+
+    // Format the trip name using route information if available
+    if (data) {
+      // Add a formatted trip_name property if it doesn't exist
+      if (!data.trip_name && data.routes) {
+        const routeInfo = data.routes;
+        data.trip_name = routeInfo.route_short_name
+          ? `${routeInfo.route_short_name} ${routeInfo.route_long_name || ''}`.trim()
+          : data.trip_headsign || 'Unknown Route';
+      } else if (!data.trip_name) {
+        data.trip_name = data.trip_headsign || 'Unknown Route';
+      }
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to get trip details after retries:', error);
+    return null;
+  }
+}
+
+/**
+ * Get multiple trip details in a batch to reduce API calls
+ * @param {string[]} tripIds - Array of trip IDs
+ * @returns {Promise<object[]>} Array of trip details
+ */
+export async function getBatchTripDetails(tripIds) {
+  if (!tripIds || tripIds.length === 0) return [];
+
+  try {
+    // Fetch trips in batches of 50 to avoid large queries
+    const batchSize = 50;
+    let allTripDetails = [];
+
+    for (let i = 0; i < tripIds.length; i += batchSize) {
+      const batchIds = tripIds.slice(i, i + batchSize);
+
+      const { data, error } = await executeSupabaseQuery(() =>
+        supabase
+          .from('trips')
+          .select('*, routes(route_id, route_short_name, route_long_name)')
+          .in('trip_id', batchIds),
+      );
+
+      if (error) {
+        console.error(`Error fetching batch trip details (batch ${i}):`, error);
+        continue;
+      }
+
+      // Process each trip to add formatted names
+      const processedData = data.map((trip) => {
+        if (!trip.trip_name && trip.routes) {
+          const routeInfo = trip.routes;
+          trip.trip_name = routeInfo.route_short_name
+            ? `${routeInfo.route_short_name} ${routeInfo.route_long_name || ''}`.trim()
+            : trip.trip_headsign || 'Unknown Route';
+        } else if (!trip.trip_name) {
+          trip.trip_name = trip.trip_headsign || 'Unknown Route';
+        }
+        return trip;
+      });
+
+      allTripDetails = [...allTripDetails, ...processedData];
+    }
+
+    return allTripDetails;
+  } catch (error) {
+    console.error('Failed to get batch trip details after retries:', error);
+    return [];
+  }
+}
+
+/**
+ * Get stop details with name fallback
+ * @param {string} stopId - The stop ID
+ * @returns {Promise<object|null>} Stop details or null if not found
+ */
+export async function getStopDetails(stopId) {
+  try {
+    const { data, error } = await executeSupabaseQuery(() =>
+      supabase
+        .from('stops')
+        .select('stop_id, stop_name, stop_lat, stop_lon')
+        .eq('stop_id', stopId)
+        .single(),
+    );
+
+    if (error) {
+      console.error('Error fetching stop details:', error);
+      return {
+        stop_id: stopId,
+        stop_name: 'Unknown Stop',
+        stop_lat: 0,
+        stop_lon: 0,
+      };
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to get stop details after retries:', error);
+    return {
+      stop_id: stopId,
+      stop_name: 'Unknown Stop',
+      stop_lat: 0,
+      stop_lon: 0,
+    };
   }
 }
