@@ -1,5 +1,6 @@
 'use server';
 import supabase from './supabaseClient';
+import * as cache from '@/lib/cache';
 
 /**
  * Helper function to handle Supabase query errors with retries
@@ -102,6 +103,13 @@ export async function getTodayCalendar() {
   const day = String(today.getDate()).padStart(2, '0');
   const formattedDate = `${year}-${month}-${day}`;
 
+  // Use cache with a shorter TTL since this is specific to today
+  const cacheKey = `calendar_dates:${formattedDate}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
@@ -115,9 +123,12 @@ export async function getTodayCalendar() {
       return { service_id: '', date: '' };
     }
 
-    return data.length > 0
-      ? data.map((data) => data)
-      : { service_id: '', date: '' };
+    const result =
+      data.length > 0 ? data.map((data) => data) : { service_id: '', date: '' };
+
+    // Cache for 15 minutes (dynamicData) since it's date-specific
+    cache.set(cacheKey, result, 'dynamicData');
+    return result;
   } catch (error) {
     console.error('Unexpected error in getTodayCalendar:', error);
     return { service_id: '', date: '' };
@@ -232,6 +243,13 @@ export async function getUserData(email) {
  * @returns {Promise<Stop[]>} Array of stops
  */
 export async function getUnfilteredStops() {
+  // Check cache first
+  const cacheKey = 'stops:all';
+  const cachedStops = cache.get(cacheKey);
+  if (cachedStops) {
+    return cachedStops;
+  }
+
   try {
     // Use pagination to prevent large response size, but ensure we get the complete stop data
     const data = await fetchPaginatedData(
@@ -255,6 +273,8 @@ export async function getUnfilteredStops() {
       );
     }
 
+    // Cache the stops data for a long time since it rarely changes
+    cache.set(cacheKey, stops, 'staticData');
     return stops;
   } catch (error) {
     console.error('Failed to get stops after retries:', error);
@@ -268,6 +288,13 @@ export async function getUnfilteredStops() {
  * @returns {Promise<StopTime[]>} Array of stop times
  */
 export async function getStopTimes(stop_id) {
+  // Check cache first
+  const cacheKey = `stop_times:${stop_id}`;
+  const cachedStopTimes = cache.get(cacheKey);
+  if (cachedStopTimes) {
+    return cachedStopTimes;
+  }
+
   try {
     // Limit the number of stop times returned
     const { data, error } = await executeSupabaseQuery(
@@ -285,6 +312,9 @@ export async function getStopTimes(stop_id) {
       console.error('Error fetching stop times:', error);
       return [];
     }
+
+    // Cache the stop times for this stop
+    cache.set(cacheKey, data, 'staticData');
     return data;
   } catch (error) {
     console.error('Failed to get stop times after retries:', error);
@@ -297,6 +327,13 @@ export async function getStopTimes(stop_id) {
  * @returns {Promise<Trip[]>} Array of trips
  */
 export async function getTrip() {
+  // Check cache first
+  const cacheKey = 'trips:all';
+  const cachedTrips = cache.get(cacheKey);
+  if (cachedTrips) {
+    return cachedTrips;
+  }
+
   try {
     // Use pagination to avoid large response payload
     const data = await fetchPaginatedData(
@@ -305,6 +342,8 @@ export async function getTrip() {
       1000, // Max 1000 trips
     );
 
+    // Cache the trips data for a long time
+    cache.set(cacheKey, data, 'staticData');
     return data;
   } catch (error) {
     console.error('Failed to get trips after retries:', error);
@@ -317,6 +356,13 @@ export async function getTrip() {
  * @returns {Promise<ShapePoint[][]>} Array of shape point arrays
  */
 export async function getShapes() {
+  // Check cache first
+  const cacheKey = 'shapes:all';
+  const cachedShapes = cache.get(cacheKey);
+  if (cachedShapes) {
+    return cachedShapes;
+  }
+
   try {
     // Get only specific shape IDs instead of all shapes
     // This significantly reduces the response size
@@ -369,6 +415,9 @@ export async function getShapes() {
 
     // Convert to array of shape paths
     const shapePaths = Object.values(groupedShapes);
+
+    // Cache the shapes
+    cache.set(cacheKey, shapePaths, 'staticData');
     return shapePaths;
   } catch (error) {
     console.error('Failed to get shapes after retries:', error);
@@ -382,6 +431,13 @@ export async function getShapes() {
  * @returns {Promise<Stop[]>} Array of matching stops
  */
 export async function getStopsByName(name) {
+  // Check cache first
+  const cacheKey = `stops:byName:${name}`;
+  const cachedStops = cache.get(cacheKey);
+  if (cachedStops) {
+    return cachedStops;
+  }
+
   try {
     // First try exact match
     const { data, error } = await executeSupabaseQuery(() =>
@@ -414,21 +470,29 @@ export async function getStopsByName(name) {
 
       if (fuzzyData.length > 0) {
         console.log(`No exact match for "${name}", using fuzzy match instead`);
-        return fuzzyData.map((stop) => ({
+        const result = fuzzyData.map((stop) => ({
           stop_id: stop.stop_id,
           name: stop.stop_name,
           lat: parseFloat(stop.stop_lat),
           lng: parseFloat(stop.stop_lon),
         }));
+
+        // Cache the results
+        cache.set(cacheKey, result, 'staticData');
+        return result;
       }
     }
 
-    return data.map((stop) => ({
+    const result = data.map((stop) => ({
       stop_id: stop.stop_id,
       name: stop.stop_name,
       lat: parseFloat(stop.stop_lat),
       lng: parseFloat(stop.stop_lon),
     }));
+
+    // Cache the results
+    cache.set(cacheKey, result, 'staticData');
+    return result;
   } catch (error) {
     console.error('Failed to get stops by name after retries:', error);
     return [];
@@ -443,6 +507,13 @@ export async function getStopsByName(name) {
 export async function getTripsForServiceIds(serviceIds) {
   if (serviceIds.length === 0) return [];
 
+  // Check cache first
+  const cacheKey = `trips:byServiceIds:${serviceIds.sort().join(',')}`;
+  const cachedTrips = cache.get(cacheKey);
+  if (cachedTrips) {
+    return cachedTrips;
+  }
+
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase.from('trips').select('*').in('service_id', serviceIds),
@@ -453,6 +524,8 @@ export async function getTripsForServiceIds(serviceIds) {
       return [];
     }
 
+    // Cache the results
+    cache.set(cacheKey, data, 'staticData');
     return data;
   } catch (error) {
     console.error('Failed to get trips for service IDs after retries:', error);
@@ -466,6 +539,13 @@ export async function getTripsForServiceIds(serviceIds) {
  * @returns {Promise<object|null>} Trip details or null if not found
  */
 export async function getTripDetails(tripId) {
+  // Check cache first
+  const cacheKey = `trip:details:${tripId}`;
+  const cachedTrip = cache.get(cacheKey);
+  if (cachedTrip) {
+    return cachedTrip;
+  }
+
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
@@ -493,6 +573,8 @@ export async function getTripDetails(tripId) {
       }
     }
 
+    // Cache the results
+    cache.set(cacheKey, data, 'staticData');
     return data;
   } catch (error) {
     console.error('Failed to get trip details after retries:', error);
@@ -507,6 +589,13 @@ export async function getTripDetails(tripId) {
  */
 export async function getBatchTripDetails(tripIds) {
   if (!tripIds || tripIds.length === 0) return [];
+
+  // Generate cache key from sorted trip IDs to ensure consistency
+  const cacheKey = `trips:batchDetails:${tripIds.sort().join(',')}`;
+  const cachedTrips = cache.get(cacheKey);
+  if (cachedTrips) {
+    return cachedTrips;
+  }
 
   try {
     // Fetch trips in batches of 50 to avoid large queries
@@ -544,6 +633,8 @@ export async function getBatchTripDetails(tripIds) {
       allTripDetails = [...allTripDetails, ...processedData];
     }
 
+    // Cache the results
+    cache.set(cacheKey, allTripDetails, 'staticData');
     return allTripDetails;
   } catch (error) {
     console.error('Failed to get batch trip details after retries:', error);
@@ -557,6 +648,13 @@ export async function getBatchTripDetails(tripIds) {
  * @returns {Promise<object|null>} Stop details or null if not found
  */
 export async function getStopDetails(stopId) {
+  // Check cache first
+  const cacheKey = `stop:details:${stopId}`;
+  const cachedStop = cache.get(cacheKey);
+  if (cachedStop) {
+    return cachedStop;
+  }
+
   try {
     const { data, error } = await executeSupabaseQuery(() =>
       supabase
@@ -576,6 +674,8 @@ export async function getStopDetails(stopId) {
       };
     }
 
+    // Cache the results
+    cache.set(cacheKey, data, 'staticData');
     return data;
   } catch (error) {
     console.error('Failed to get stop details after retries:', error);

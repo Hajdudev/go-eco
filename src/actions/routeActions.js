@@ -6,10 +6,27 @@ import {
   getBatchTripDetails,
   setUserRecentRoute,
 } from '@/services/apiGetData';
+import * as cache from '@/lib/cache';
 
 export async function findRoutes(params) {
   try {
     const { fromId, toId, fromName, toName, currentTime, user } = params;
+
+    // Cache key for the route search - including the time for accuracy
+    const cacheKey = `route:${fromId || fromName}:${toId || toName}:${currentTime.split(':')[0]}`;
+    const cachedRoutes = cache.get(cacheKey);
+
+    // Return cached route results if available
+    if (cachedRoutes) {
+      // If we have the user, still save this as a recent route (doesn't affect results)
+      if (user) {
+        // Fire and forget - don't wait for this to complete
+        setUserRecentRoute(fromName, toName, user).catch((err) =>
+          console.error('Error saving recent route:', err),
+        );
+      }
+      return cachedRoutes;
+    }
 
     // If we have the user, save this as a recent route
     if (user) {
@@ -135,10 +152,16 @@ export async function findRoutes(params) {
       return timeA - timeB;
     });
 
-    return {
+    const result = {
       routes: routesWithNames,
       error: null,
     };
+
+    // Cache the route results for a moderate time (changes with current time)
+    // Uses default cache time (1 hour)
+    cache.set(cacheKey, result);
+
+    return result;
   } catch (error) {
     console.error('Error finding routes:', error);
     return {
