@@ -53,8 +53,7 @@ export function set(key, value, type = 'default') {
     value,
     expiresAt,
   });
-
- 
+}
 
 /**
  * Get a value from the cache
@@ -74,7 +73,6 @@ export function get(key) {
     cacheStore.delete(key);
     return null;
   }
-
 
   return cachedItem.value;
 }
