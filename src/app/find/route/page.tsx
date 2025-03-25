@@ -188,7 +188,7 @@ export default function Page() {
   const dateParam = searchParams.get('date');
 
   // Parse date from URL parameter or use today's date
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+  const [selectedDate] = useState<Date>(() => {
     if (dateParam) {
       const parsedDate = new Date(dateParam);
       // Check if the date is valid
