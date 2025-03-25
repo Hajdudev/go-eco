@@ -27,15 +27,22 @@ function normalizeGtfsTime(gtfsTime) {
 
 export async function findRoutes(params) {
   try {
-    const { fromId, toId, fromName, toName, currentTime, user } = params;
+    const { fromId, toId, fromName, toName, currentTime, user, selectedDate } =
+      params;
+
+    // Use provided date or default to today
+    const searchDate = selectedDate ? new Date(selectedDate) : new Date();
+
+    // Format the date for display in logs and debugging
+    const dateString = searchDate.toISOString().split('T')[0];
+    console.log(`Finding routes for date: ${dateString}`);
 
     // Parse current time
     const [currentHour, currentMinute] = currentTime.split(':').map(Number);
 
-    // Cache key for the route search - including the time for accuracy
-    // Include the current date to ensure routes are for the current service day
-    const today = new Date();
-    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    // Format the date for caching - reuse the existing dateString variable
+
+    // Cache key for the route search - including the date and time for accuracy
     const cacheKey = `route:${fromId || fromName}:${toId || toName}:${currentTime.split(':')[0]}:${dateString}`;
 
     const cachedRoutes = cache.get(cacheKey);
@@ -57,13 +64,13 @@ export async function findRoutes(params) {
       await setUserRecentRoute(fromName, toName, user);
     }
 
-    // Get active service IDs for today to filter relevant trips
-    const activeServiceIds = await getActiveServiceIds();
+    // Get active service IDs for the selected date
+    const activeServiceIds = await getActiveServiceIds(searchDate);
 
     if (!activeServiceIds || activeServiceIds.length === 0) {
       return {
         routes: [],
-        error: 'No active transit service available for today.',
+        error: `No transit service available for ${dateString}.`,
       };
     }
 
@@ -176,6 +183,8 @@ export async function findRoutes(params) {
             tripDetail?.route_id ||
             'Unknown Route',
           serviceId: tripDetail?.service_id,
+          // Add date information for display context
+          searchDate: dateString,
         };
       });
 
@@ -212,6 +221,7 @@ export async function findRoutes(params) {
     const result = {
       routes: routesWithNames,
       error: null,
+      date: dateString, // Include the date in the result for reference
     };
 
     // Cache the route results until end of day

@@ -7,6 +7,7 @@ import { useAppContext } from '../context/AppProvider';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import ModalProvider from './ModalProvider';
+import DateSelector from './DateSelector';
 
 type MarkerType = {
   lat: number;
@@ -30,6 +31,7 @@ const SearchForm = () => {
     toValue,
     setFromValue,
     setToValue,
+    selectedDate,
   } = useAppContext();
 
   const handleFocus =
@@ -63,6 +65,10 @@ const SearchForm = () => {
   };
   const { status } = useSession();
   const isLoading = status === 'loading';
+
+  // Format date as YYYY-MM-DD for the URL
+  const formattedDate = selectedDate.toISOString().split('T')[0];
+
   return (
     <>
       <ModalProvider />
@@ -84,6 +90,17 @@ const SearchForm = () => {
             onFocus={handleFocus('to')}
             onBlur={handleBlur}
           />
+
+          {/* Better date selector presentation */}
+          <div className='w-full px-2'>
+            <div className='flex items-center justify-between'>
+              <div className='text-sm text-gray-500'>
+                When do you want to travel?
+              </div>
+              <DateSelector />
+            </div>
+          </div>
+
           {isLoading ? (
             <Button
               className='hover:scale-50'
@@ -92,7 +109,9 @@ const SearchForm = () => {
               value='search'
             />
           ) : (
-            <Link href={`/find/route?from=${fromValue}&to=${toValue}`}>
+            <Link
+              href={`/find/route?from=${encodeURIComponent(fromValue)}&to=${encodeURIComponent(toValue)}&date=${formattedDate}`}
+            >
               <Button
                 className='transition-all duration-100 hover:scale-110'
                 text='Search a route'

@@ -97,15 +97,18 @@ async function fetchPaginatedData(
 }
 
 /**
- * Get active service IDs for the current day
+ * Get active service IDs for the specified day
+ * @param {Date} [selectedDate] - Optional date to get service IDs for (defaults to today)
  * @returns {Promise<string[]>} Array of active service IDs
  */
-export async function getActiveServiceIds() {
-  const today = new Date();
+export async function getActiveServiceIds(selectedDate) {
+  const today = selectedDate || new Date();
+
+  // Format date as YYYYMMDD for GTFS format
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
-  const formattedDate = `${year}-${month}-${day}`;
+  const formattedDate = `${year}${month}${day}`;
 
   // Get day of week (0=Sunday, 6=Saturday)
   const dayOfWeek = today.getDay();
@@ -191,9 +194,10 @@ export async function getActiveServiceIds() {
   }
 }
 
-export async function getTodayCalendar() {
+// Update getTodayCalendar function to use the new date parameter
+export async function getTodayCalendar(selectedDate) {
   // Convert the return type to match CalendarDate | CalendarDate[]
-  const serviceIds = await getActiveServiceIds();
+  const serviceIds = await getActiveServiceIds(selectedDate);
 
   if (serviceIds.length === 0) {
     return { service_id: '', date: '' }; // Return a single empty CalendarDate

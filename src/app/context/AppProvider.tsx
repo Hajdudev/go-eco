@@ -47,6 +47,8 @@ type AppContextType = {
   setTodayDay: (value: CalendarDate | CalendarDate[]) => void;
   activeServiceIds: ActiveServiceIds;
   setActiveServiceIds: (value: ActiveServiceIds) => void;
+  selectedDate: Date;
+  setSelectedDate: (value: Date) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -74,6 +76,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activeServiceIds, setActiveServiceIds] = useState<ActiveServiceIds>(
     [],
   );
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const value = useMemo(
     () => ({
@@ -105,6 +108,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setTodayDay,
       activeServiceIds,
       setActiveServiceIds,
+      selectedDate,
+      setSelectedDate,
     }),
     [
       markers,
@@ -121,6 +126,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       user,
       todayDay,
       activeServiceIds,
+      selectedDate,
     ],
   );
 
