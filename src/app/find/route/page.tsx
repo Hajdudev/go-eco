@@ -1,13 +1,12 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
-import { useEffect, useState, JSX, useMemo } from 'react';
-import { findRoutes } from '@/actions/routeActions';
+import { useState, JSX, useMemo } from 'react';
 import InitialModal from '@/app/_components/InitialModal';
 import DateSelector from '@/app/_components/DateSelector';
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 
-// Define RouteResult interface with the new properties
-interface RouteResult {
+type RouteResult = {
   tripId: string;
   tripName: string;
   fromStopId: string;
@@ -20,165 +19,15 @@ interface RouteResult {
   departureDayOffset?: number;
   arrivalDayOffset?: number;
   searchDate?: string;
+};
+const queryClient = useQueryClient();
+export default function Paqe() {
+  <QueryClientProvider client={queryClient}>
+    <Route />
+  </QueryClientProvider>;
 }
 
-// Import helper functions for UI display
-function isRouteToday(
-  currentTime: string,
-  departureTime: string,
-  departureDayOffset?: number,
-): boolean {
-  // Consider the day offset - a day offset > 0 means the trip is on a future day
-  if (departureDayOffset && departureDayOffset > 0) return false;
-
-  const currentMinutes = timeToMinutes(currentTime);
-  const departureMinutes = timeToMinutes(departureTime);
-
-  return departureMinutes >= currentMinutes;
-}
-
-// Other helper functions
-function getWaitTime(currentTime: string, departureTime: string): string {
-  let waitMinutes;
-  const departureHour = parseInt(departureTime.split(':')[0], 10);
-  const currentMinutes = timeToMinutes(currentTime);
-
-  // Handle times with hours >= 24 (next day)
-  if (departureHour >= 24) {
-    // Calculate how many days in the future
-    const daysAhead = Math.floor(departureHour / 24);
-    // Get normalized hours for that day
-    const normalizedHour = departureHour % 24;
-    const normalizedDepartureTime = `${normalizedHour.toString().padStart(2, '0')}:${departureTime.split(':')[1]}`;
-    const normalizedDepartureMinutes = timeToMinutes(normalizedDepartureTime);
-
-    // Calculate wait time including the days ahead
-    waitMinutes =
-      daysAhead * 24 * 60 + normalizedDepartureMinutes - currentMinutes;
-
-    // If still negative, it means we wrap around to the next day
-    if (waitMinutes < 0) {
-      waitMinutes += 24 * 60;
-    }
-  } else {
-    // Standard case for same day times
-    let departureMinutes = timeToMinutes(departureTime);
-    if (departureMinutes < currentMinutes) {
-      departureMinutes += 24 * 60; // Next day
-    }
-    waitMinutes = departureMinutes - currentMinutes;
-  }
-
-  const waitHours = Math.floor(waitMinutes / 60);
-  const remainingMinutes = waitMinutes % 60;
-
-  if (waitHours > 0) {
-    return `in ${waitHours}h ${remainingMinutes}m`;
-  } else {
-    return `in ${remainingMinutes}m`;
-  }
-}
-
-function formatTimeDisplay(timeString: string): string {
-  // Simple approach: just split by colon and take first two parts
-  const parts = timeString.split(':');
-  const hours = parseInt(parts[0], 10) % 24; // Normalize hours to 0-23 range
-  const minutes = parts[1]; // Keep minutes exactly as is
-
-  // Return without any additional processing
-  return `${hours}:${minutes}`;
-}
-
-function formatTime(timeString: string): string {
-  return timeString.substring(0, 5);
-}
-
-function calculateDuration(startTime: string, endTime: string): string {
-  const start = timeToMinutes(startTime);
-  const end = timeToMinutes(endTime);
-  let durationMinutes = end - start;
-
-  if (durationMinutes < 0) {
-    durationMinutes += 24 * 60;
-  }
-
-  const hours = Math.floor(durationMinutes / 60);
-  const minutes = durationMinutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  } else {
-    return `${minutes}m`;
-  }
-}
-
-function timeToMinutes(timeString: string): number {
-  const [hours, minutes] = timeString.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-function determineArrivalDay(
-  currentTime: string,
-  departureTime: string,
-  arrivalTime: string,
-  departureDayOffset?: number,
-  arrivalDayOffset?: number,
-): JSX.Element | null {
-  // If we have explicit day offsets from the GTFS data
-  if (departureDayOffset !== undefined && arrivalDayOffset !== undefined) {
-    const dayDifference = arrivalDayOffset - departureDayOffset;
-
-    if (dayDifference > 0) {
-      return (
-        <span className='ml-2 text-xs text-orange-600'>
-          {dayDifference === 1 ? '(next day)' : `(+${dayDifference} days)`}
-        </span>
-      );
-    }
-    return null;
-  }
-
-  // Fallback to the old logic for compatibility
-  const departureHour = parseInt(departureTime.split(':')[0], 10);
-  const arrivalHour = parseInt(arrivalTime.split(':')[0], 10);
-
-  // If departure is already on a future day
-  if (departureHour >= 24) {
-    const departureDays = Math.floor(departureHour / 24);
-    const arrivalDays = Math.floor(arrivalHour / 24);
-
-    // If arrival is on an even later day than departure
-    if (arrivalDays > departureDays) {
-      return (
-        <span className='ml-2 text-xs text-red-600'>{`(+${arrivalDays - departureDays + 1} days)`}</span>
-      );
-    }
-
-    // Normal "next day" case
-    return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
-  }
-
-  // Use normalized times for comparison
-  const departureMinutes = timeToMinutes(departureTime);
-  const arrivalMinutes = timeToMinutes(arrivalTime);
-
-  if (
-    arrivalMinutes < departureMinutes &&
-    departureMinutes - arrivalMinutes > 60
-  ) {
-    return isRouteToday(currentTime, departureTime) ? (
-      <span className='ml-2 text-xs text-orange-600'>(next day)</span>
-    ) : (
-      <span className='ml-2 text-xs text-red-600'>(+2 days)</span>
-    );
-  } else if (!isRouteToday(currentTime, departureTime)) {
-    return <span className='ml-2 text-xs text-orange-600'>(next day)</span>;
-  }
-
-  return null;
-}
-
-export default function Page() {
+function Route() {
   const { user, trips } = useAppContext();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
@@ -187,11 +36,9 @@ export default function Page() {
   const toId = searchParams.get('toId');
   const dateParam = searchParams.get('date');
 
-  // Parse date from URL parameter or use today's date
   const [selectedDate] = useState<Date>(() => {
     if (dateParam) {
       const parsedDate = new Date(dateParam);
-      // Check if the date is valid
       if (!isNaN(parsedDate.getTime())) {
         return parsedDate;
       }
@@ -199,86 +46,12 @@ export default function Page() {
     return new Date();
   });
 
-  const [loading, setLoading] = useState(true);
-  const [routes, setRoutes] = useState<RouteResult[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
-  const [currentTime, setCurrentTime] = useState<string>('');
+  const [loading] = useState(true);
+  const [routes] = useState<RouteResult[]>([]);
+  const [error] = useState<string | null>(null);
+  const [loadingStatus] = useState<string>('Initializing...');
+  const [currentTime] = useState<string>('');
 
-  // Get current time when component loads
-  useEffect(() => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    setCurrentTime(`${hours}:${minutes}:${seconds}`);
-  }, []);
-
-  // Use the server action to find routes
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchRoutes() {
-      if (
-        !from ||
-        !to ||
-        !currentTime ||
-        !Array.isArray(trips) ||
-        trips.length === 0
-      ) {
-        if (isMounted) {
-          setError(
-            !from || !to
-              ? 'Missing from or to location'
-              : !currentTime
-                ? 'Initializing...'
-                : 'No trips data available. Please try refreshing the page.',
-          );
-          setLoading(false);
-        }
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setLoadingStatus('Finding routes...');
-
-        // Call the server action with date included
-        const result = await findRoutes({
-          fromId: fromId || undefined,
-          toId: toId || undefined,
-          fromName: from,
-          toName: to,
-          currentTime,
-          user,
-          trips,
-          selectedDate, // Pass the selected date
-        });
-
-        if (isMounted) {
-          setRoutes(result.routes);
-          setError(result.error);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Error finding routes:', err);
-        if (isMounted) {
-          setError('Failed to find routes. Please try again later.');
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchRoutes();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [from, to, fromId, toId, currentTime, user, trips, selectedDate]);
-
-  const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
-
-  // Format date for display and day comparison
   const isToday = useMemo(() => {
     const today = new Date();
     return selectedDate.toDateString() === today.toDateString();
@@ -291,7 +64,6 @@ export default function Page() {
     return selectedDate.toDateString() === tomorrow.toDateString();
   }, [selectedDate]);
 
-  // Format date string with contextual information
   const formattedDateStr = useMemo(() => {
     if (isToday) {
       return 'Today';
@@ -306,22 +78,49 @@ export default function Page() {
     }
   }, [selectedDate, isToday, isTomorrow]);
 
+  function formatTimeDisplay(timeString: string): string {
+    return timeString;
+  }
+  function getWaitTime(currentTime: string, departureTime: string): string {
+    return '';
+  }
+  function calculateDuration(startTime: string, endTime: string): string {
+    return '';
+  }
+  function determineArrivalDay(
+    currentTime: string,
+    departureTime: string,
+    arrivalTime: string,
+    departureDayOffset?: number,
+    arrivalDayOffset?: number,
+  ): JSX.Element | null {
+    return null;
+  }
+  function isRouteToday(
+    currentTime: string,
+    departureTime: string,
+    departureDayOffset?: number,
+  ): boolean {
+    return true;
+  }
+  function formatTime(timeString: string): string {
+    return timeString;
+  }
+  const formattedCurrentTime = currentTime ? formatTime(currentTime) : '--:--';
+
   return (
     <>
       <InitialModal />
       <div className='bg-secondary mt-8 min-h-[550px] w-full rounded-4xl p-6'>
         <div className='mb-4 flex flex-col space-y-4'>
-          {/* Route info header with better date display */}
           <div className='col-span-full'>
             <div className='rounded-lg bg-white px-4 py-3 shadow'>
               <div className='mb-2 flex items-center justify-between'>
                 <h2 className='text-lg font-semibold text-gray-800'>
                   Route Details
                 </h2>
-                {/* Allow changing the date directly from results page */}
                 <DateSelector />
               </div>
-
               <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
                 <div className='col-span-2 space-y-2'>
                   <div className='flex items-center'>
@@ -352,7 +151,6 @@ export default function Page() {
                       <p className='font-medium'>{from || 'Not selected'}</p>
                     </div>
                   </div>
-
                   <div className='flex items-center'>
                     <div className='flex h-8 w-8 items-center justify-center rounded-full bg-green-100'>
                       <svg
@@ -382,7 +180,6 @@ export default function Page() {
                     </div>
                   </div>
                 </div>
-
                 <div className='flex flex-col justify-center space-y-1 border-l pl-4'>
                   <div>
                     <p className='text-xs text-gray-500'>Date</p>
@@ -404,7 +201,6 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Optional enhancement: Add message for future dated searches */}
         {!loading && !error && routes.length > 0 && !isToday && (
           <div className='mb-4 rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
             <div className='flex'>
@@ -493,7 +289,6 @@ export default function Page() {
                           route.departureDayOffset > 0
                             ? `+${route.departureDayOffset + 1} days`
                             : formattedDateStr.split(',')[0]}{' '}
-                          {/* Show just day name */}
                         </span>
                       )}
                       <div className='text-sm text-gray-500'>
