@@ -4,7 +4,7 @@ import { useAppContext } from '../../context/AppProvider';
 import { useState, JSX, useMemo } from 'react';
 import InitialModal from '@/app/_components/InitialModal';
 import DateSelector from '@/app/_components/DateSelector';
-import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 
 type RouteResult = {
   tripId: string;
@@ -35,6 +35,15 @@ function Route() {
   const fromId = searchParams.get('fromId');
   const toId = searchParams.get('toId');
   const dateParam = searchParams.get('date');
+
+  const { isPending, data } = useQuery({
+    queryKey: ['routes'],
+    queryFn: () =>
+      fetch('http://localhost:3001/find/route?from=Hlavn%C3%A1%20stanica&to=Pod%20stanicou&date=2025-05-13').then((res) =>
+        res.json(),
+      ),
+  })
+
 
   const [selectedDate] = useState<Date>(() => {
     if (dateParam) {
@@ -274,7 +283,7 @@ function Route() {
                         )
                       ) : isTomorrow ? (
                         route.departureDayOffset &&
-                        route.departureDayOffset > 0 ? (
+                          route.departureDayOffset > 0 ? (
                           <span className='mr-3 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800'>
                             {`Next day`}
                           </span>
@@ -286,7 +295,7 @@ function Route() {
                       ) : (
                         <span className='mr-3 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800'>
                           {route.departureDayOffset &&
-                          route.departureDayOffset > 0
+                            route.departureDayOffset > 0
                             ? `+${route.departureDayOffset + 1} days`
                             : formattedDateStr.split(',')[0]}{' '}
                         </span>
@@ -306,7 +315,7 @@ function Route() {
                         </p>
                         <>
                           {route.departureDayOffset &&
-                          route.departureDayOffset > 0 ? (
+                            route.departureDayOffset > 0 ? (
                             <span className='ml-2 text-xs text-orange-600'>
                               {route.departureDayOffset === 1
                                 ? '(next day)'
