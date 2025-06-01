@@ -1,27 +1,31 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import InitialModal from '@/app/_components/InitialModal';
 import DateSelector from '@/app/_components/DateSelector';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 function formatDate(date: Date): string {
   // Format date as YYYY-MM-DD
   return date.toISOString().slice(0, 10);
 }
 type RouteResult = {
-  tripId: string;
-  tripName: string;
-  fromStopId: string;
-  fromStopName: string;
-  toStopId: string;
-  toStopName: string;
-  departureTime: string;
-  arrivalTime: string;
-  serviceId?: string;
-  departureDayOffset?: number;
-  arrivalDayOffset?: number;
-  searchDate?: string;
+  TripId: string;
+  TripName: string;
+  FromStopId: string;
+  FromStopName: string;
+  ToStopId: string;
+  ToStopName: string;
+  DepartureTime: string;
+  ArrivalTime: string;
+  ServiceId?: string;
+  DepartureDayOffset?: number;
+  ArrivalDayOffset?: number;
+  SearchDate?: string;
 };
 
 const queryClient = new QueryClient();
@@ -53,7 +57,6 @@ function Route() {
     return new Date();
   });
 
-
   const { isPending, data, error } = useQuery<RouteResult[]>({
     queryKey: ['routes'],
     queryFn: async () => {
@@ -62,11 +65,6 @@ function Route() {
     },
     enabled: !!from && !!to && !!selectedDate,
   });
-  useEffect(() => {
-    if (data) {
-      console.log('Fetched route data:', data);
-    }
-  }, [data]);
   const isToday = useMemo(() => {
     const today = new Date();
     return selectedDate.toDateString() === today.toDateString();
@@ -214,9 +212,9 @@ function Route() {
                   <div className='mb-2 flex items-center justify-between'>
                     <div className='flex items-center'>
                       <span className='font-medium'>
-                        {route.tripName && route.tripName !== 'Unknown Route'
-                          ? route.tripName
-                          : `Route to ${route.toStopName}`}
+                        {route.TripName && route.TripName !== 'Unknown Route'
+                          ? route.TripName
+                          : `Route to ${route.ToStopName}`}
                       </span>
                     </div>
                   </div>
@@ -225,19 +223,19 @@ function Route() {
                       <p className='text-xs text-gray-500'>Departure</p>
                       <div className='flex items-center'>
                         <p className='font-bold text-blue-600'>
-                          {route.departureTime}
+                          {route.DepartureTime}
                         </p>
                       </div>
-                      <p>{route.fromStopName}</p>
+                      <p>{route.FromStopName}</p>
                     </div>
                     <div>
                       <p className='text-xs text-gray-500'>Arrival</p>
                       <div className='flex items-center'>
                         <p className='font-bold text-green-600'>
-                          {route.arrivalTime}
+                          {route.ArrivalTime}
                         </p>
                       </div>
-                      <p>{route.toStopName}</p>
+                      <p>{route.ToStopName}</p>
                     </div>
                   </div>
                 </div>
