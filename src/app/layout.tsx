@@ -6,6 +6,7 @@ import './globals.css';
 import { Provider } from './context/Provider';
 import { auth } from '@/auth';
 import SessionSync from './SessionSync';
+import ReactQueryProvider from './context/ReactQueryProvider';
 
 export default async function RootLayout({
   children,
@@ -17,13 +18,15 @@ export default async function RootLayout({
   return (
     <html lang='en'>
       <body className='bg-mist overflow-x-hidden'>
-        <Providers>
-          <Provider>
-            <SessionSync />
-            <Header session={session} />
-            {children}
-          </Provider>
-        </Providers>
+        <ReactQueryProvider>
+          <Providers>
+            <Provider>
+              <SessionSync />
+              <Header session={session} />
+              {children}
+            </Provider>
+          </Providers>
+        </ReactQueryProvider>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import ModalProvider from './ModalProvider';
 import DateSelector from './DateSelector';
+import { useQueryClient } from '@tanstack/react-query';
 
 type MarkerType = {
   lat: number;
@@ -19,7 +20,7 @@ const removeDiacritics = (str: string) => {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 };
 
-const SearchForm = () => {
+function SearchForm() {
   const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
   const {
     activeSuggestionPosition,
@@ -65,6 +66,7 @@ const SearchForm = () => {
   };
   const { status } = useSession();
   const isLoading = status === 'loading';
+  const queryClient = useQueryClient();
 
   // Format date as YYYY-MM-DD for the URL
   const formattedDate = selectedDate.toISOString().split('T')[0];
@@ -117,6 +119,11 @@ const SearchForm = () => {
                 text='Search a route'
                 color='primary'
                 value='search'
+                onClick={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ['routes'],
+                  })
+                }
               />
             </Link>
           )}
@@ -182,6 +189,6 @@ const SearchForm = () => {
       </form>
     </>
   );
-};
+}
 
 export default SearchForm;

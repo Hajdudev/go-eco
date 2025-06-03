@@ -4,11 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useMemo } from 'react';
 import InitialModal from '@/app/_components/InitialModal';
 import DateSelector from '@/app/_components/DateSelector';
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQuery,
-} from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -27,17 +23,7 @@ type RouteResult = {
   SearchDate?: string;
 };
 
-const queryClient = new QueryClient();
-
-export default function Page() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Route />
-    </QueryClientProvider>
-  );
-}
-
-function Route() {
+export default function Route() {
   // const { user, trips } = useAppContext();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
