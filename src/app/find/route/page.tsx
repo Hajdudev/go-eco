@@ -1,6 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import { useAppContext } from '../../context/AppProvider';
+// import { useAppContext } from '../../context/AppProvider';
 import { useState, useMemo } from 'react';
 import InitialModal from '@/app/_components/InitialModal';
 import DateSelector from '@/app/_components/DateSelector';
@@ -10,7 +10,6 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 function formatDate(date: Date): string {
-  // Format date as YYYY-MM-DD
   return date.toISOString().slice(0, 10);
 }
 type RouteResult = {
@@ -39,12 +38,12 @@ export default function Page() {
 }
 
 function Route() {
-  const { user, trips } = useAppContext();
+  // const { user, trips } = useAppContext();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  const fromId = searchParams.get('fromId');
-  const toId = searchParams.get('toId');
+  // const fromId = searchParams.get('fromId');
+  // const toId = searchParams.get('toId');
   const dateParam = searchParams.get('date');
 
   const [selectedDate] = useState<Date>(() => {
@@ -60,7 +59,7 @@ function Route() {
   const { isPending, data, error } = useQuery<RouteResult[]>({
     queryKey: ['routes'],
     queryFn: async () => {
-      const url = `http://localhost:3001/find/route?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}&date=${formatDate(selectedDate)}`;
+      const url = `${process.env.NEXT_PUBLIC_API}/find/route?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}&date=${formatDate(selectedDate)}`;
       return fetch(url).then((res) => res.json());
     },
     enabled: !!from && !!to && !!selectedDate,
