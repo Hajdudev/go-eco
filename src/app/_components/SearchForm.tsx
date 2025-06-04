@@ -5,15 +5,14 @@ import { Input } from './Input';
 import { Button } from './Button';
 import { useAppContext } from '../context/AppProvider';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import ModalProvider from './ModalProvider';
 import DateSelector from './DateSelector';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type MarkerType = {
-  lat: number;
-  lng: number;
-  name: string;
+  stop_lat: number;
+  stop_lon: number;
+  stop_name: string;
 };
 
 const removeDiacritics = (str: string) => {
@@ -21,13 +20,17 @@ const removeDiacritics = (str: string) => {
 };
 
 function SearchForm() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['stopNames'],
+    queryFn: () =>
+      fetch(`${process.env.NEXT_PUBLIC_API}/names`).then((res) => res.json()),
+  });
   const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
   const {
     activeSuggestionPosition,
     setActiveSuggestionPosition,
     showSuggestions,
     setShowSuggestions,
-    markers,
     fromValue,
     toValue,
     setFromValue,
@@ -55,17 +58,15 @@ function SearchForm() {
 
   const handleClick = (marker: MarkerType) => {
     if (activeInput === 'from') {
-      setFromValue(marker.name);
+      setFromValue(marker.stop_name);
     } else if (activeInput === 'to') {
-      setToValue(marker.name);
+      setToValue(marker.stop_name);
     }
 
     setShowSuggestions(false);
     setActiveSuggestionPosition(null);
     setActiveInput(null);
   };
-  const { status } = useSession();
-  const isLoading = status === 'loading';
   const queryClient = useQueryClient();
 
   // Format date as YYYY-MM-DD for the URL
@@ -136,53 +137,36 @@ function SearchForm() {
                 left: `${activeSuggestionPosition.left}px`,
               }}
             >
-              {Array.from(
-                new Set(
-                  markers
-                    .filter((marker) => {
-                      const normalizedMarkerName = removeDiacritics(
-                        marker.name.toLowerCase(),
-                      );
-                      if (activeInput === 'from') {
-                        const normalizedFromValue = removeDiacritics(
-                          fromValue.toLowerCase(),
-                        );
-                        return (
-                          fromValue.length < 3 ||
-                          normalizedMarkerName.includes(normalizedFromValue)
-                        );
-                      }
-                      if (activeInput === 'to') {
-                        const normalizedToValue = removeDiacritics(
-                          toValue.toLowerCase(),
-                        );
-                        return (
-                          toValue.length < 3 ||
-                          normalizedMarkerName.includes(normalizedToValue)
-                        );
-                      }
-                      return false;
-                    })
-                    .map((marker) => marker.name),
-                ),
-              ) // Get unique names
-                .map((name) => {
-                  // Find first marker matching this name
-                  const marker = markers.find((m) => m.name === name);
-                  return (
+              {isLoading && <p className='text-white'>Loading...</p>}
+              {isError && <p className='text-white'>Error loading stops</p>}
+              {!isLoading &&
+                !isError &&
+                data
+                  // filter based on stop_name property
+                  .filter((marker: MarkerType) => {
+                    const value = activeInput === 'from' ? fromValue : toValue;
+                    if (value.length < 3) return true;
+                    const normalizedName = removeDiacritics(
+                      marker.stop_name.toLowerCase(),
+                    );
+                    const normalizedInput = removeDiacritics(
+                      value.toLowerCase(),
+                    );
+                    return normalizedName.includes(normalizedInput);
+                  })
+                  .map((marker: MarkerType) => (
                     <p
-                      key={name}
+                      key={marker.stop_name}
                       className='hover:bg-primary/20 cursor-pointer rounded-lg px-2 py-2 text-center text-white'
                       onClick={(e) => {
                         e.preventDefault();
-                        handleClick(marker!);
+                        handleClick(marker); // pass full marker object
                       }}
                       onMouseDown={(e) => e.preventDefault()}
                     >
-                      {name}
+                      {marker.stop_name}
                     </p>
-                  );
-                })}
+                  ))}
             </div>
           )}
         </div>

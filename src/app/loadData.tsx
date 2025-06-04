@@ -16,13 +16,9 @@ export function ContextInitializer({
   initialTrips,
   todayDay,
 }: ContextInitializerProps) {
-  const { setMarkers, setShapes, setTrips, setTodayDay } = useAppContext();
+  const { setShapes, setTrips, setTodayDay } = useAppContext();
 
-  // Update context with server fetched data
   useEffect(() => {
-    if (initialStops && initialStops.length > 0) {
-      setMarkers(initialStops);
-    }
     if (initialShapes && initialShapes.length > 0) {
       setShapes(initialShapes);
     }
@@ -35,7 +31,6 @@ export function ContextInitializer({
   }, [
     initialStops,
     initialShapes,
-    setMarkers,
     setShapes,
     initialTrips,
     setTrips,
