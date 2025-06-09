@@ -23,7 +23,7 @@ type InputProps = {
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
   onBlur?: () => void;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  value: string;
+  value?: string; // allow undefined for uncontrolled usage
   placeholder: string;
   name: string;
   className?: string;
